@@ -70,6 +70,15 @@ All commands support `--json` for machine-readable output.
 
 # Testing
 
+## Unit Tests
+
+- Run all tests: `go test ./...`
+- Run specific package: `go test ./internal/bean/`
+- Verbose output: `go test -v ./...`
+- Use table-driven tests following Go conventions
+
+## Manual CLI Testing
+
 - Use `go run .` instead of building the executable first.
 - All commands support the `--beans-path` flag to specify a custom path to the `.beans/` directory. Use this for testing (instead of spamming the real `.beans/` directory).
 

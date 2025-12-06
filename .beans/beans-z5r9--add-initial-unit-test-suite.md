@@ -1,9 +1,11 @@
 ---
 title: Add initial unit test suite
-status: open
+status: done
 created_at: 2025-12-06T15:26:00Z
-updated_at: 2025-12-06T15:26:00Z
+updated_at: 2025-12-06T19:51:11Z
 ---
+
+
 
 Explore the codebase and create a first collection of unit tests to establish testing patterns and coverage for core functionality. This should include:
 
