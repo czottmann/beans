@@ -1,5 +1,7 @@
 package main
 
+import "hmans.dev/beans/cmd"
+
 func main() {
-	println("Hello, World!")
+	cmd.Execute()
 }
