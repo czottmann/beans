@@ -1,9 +1,11 @@
 ---
 title: Investigate and improve Claude Code hooks integration
-status: open
+status: done
 created_at: 2025-12-06T18:35:29Z
-updated_at: 2025-12-06T18:35:29Z
+updated_at: 2025-12-06T20:25:11Z
 ---
+
+
 
 Currently requires verbose JSON configuration in .claude/settings.json with PreCompact and SessionStart hooks. Explore better mechanisms for hooking into Claude Code.
 
