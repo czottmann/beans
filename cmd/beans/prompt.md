@@ -12,6 +12,7 @@ All commands support --json for machine-readable output. Use this flag to parse 
 - Never interact with the data inside the `.beans/` directory directly, except for updating an existing bean.
 - After compaction or clear, run `beans prompt` to re-sync
 - When completing work, mark the bean as done using `beans status <bean-id> done`
+- Lean towards using sub-agents for interacting with beans
 
 ## Finding work
 
