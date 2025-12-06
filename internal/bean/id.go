@@ -8,14 +8,11 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
-const (
-	idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-	idLength   = 3
-)
+const idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-// NewID generates a new NanoID for a bean with an optional prefix.
-func NewID(prefix string) string {
-	id, err := gonanoid.Generate(idAlphabet, idLength)
+// NewID generates a new NanoID for a bean with an optional prefix and configurable length.
+func NewID(prefix string, length int) string {
+	id, err := gonanoid.Generate(idAlphabet, length)
 	if err != nil {
 		panic(err) // should never happen with valid alphabet
 	}

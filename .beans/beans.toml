@@ -1,5 +1,6 @@
 [beans]
 prefix = 'beans-'
+id_length = 4
 
 [statuses]
 available = ['open', 'in-progress', 'done']

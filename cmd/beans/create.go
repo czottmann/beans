@@ -86,7 +86,7 @@ var createCmd = &cobra.Command{
 		}
 
 		b := &bean.Bean{
-			ID:     bean.NewID(cfg.Beans.Prefix),
+			ID:     bean.NewID(cfg.Beans.Prefix, cfg.Beans.IDLength),
 			Slug:   bean.Slugify(title),
 			Title:  title,
 			Status: status,

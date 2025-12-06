@@ -17,7 +17,8 @@ type Config struct {
 
 // BeansConfig defines settings for bean creation.
 type BeansConfig struct {
-	Prefix string `toml:"prefix"`
+	Prefix   string `toml:"prefix"`
+	IDLength int    `toml:"id_length"`
 }
 
 // StatusConfig defines available statuses and the default.
@@ -30,7 +31,8 @@ type StatusConfig struct {
 func Default() *Config {
 	return &Config{
 		Beans: BeansConfig{
-			Prefix: "",
+			Prefix:   "",
+			IDLength: 4,
 		},
 		Statuses: StatusConfig{
 			Available: []string{"open", "in-progress", "done"},
@@ -62,6 +64,11 @@ func Load(root string) (*Config, error) {
 	var cfg Config
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
+	}
+
+	// Apply defaults for missing values
+	if cfg.Beans.IDLength == 0 {
+		cfg.Beans.IDLength = 4
 	}
 
 	return &cfg, nil
