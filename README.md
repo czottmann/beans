@@ -7,7 +7,7 @@ An agentic-first issue tracker. Store and manage issues as markdown files in you
 ### Homebrew
 
 ```bash
-brew install hmans/tap/beans
+brew install hmans/beans/beans
 ```
 
 ## Usage
