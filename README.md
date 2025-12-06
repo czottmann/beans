@@ -74,6 +74,21 @@ This runs `beans prompt` at session start and before context compaction, injecti
 
 You can use Beans with other coding agents by configuring them to run `beans prompt` to get the prompt instructions for task management. We'll add specific integrations for popular agents over time.
 
+## Usage
+
+Assuming you have integrated Beans into your coding agent correctly, it will already know how to create and manage beans for you. You can use the usual assortment of natural language inquiries. If you've just
+added Beans to an existing project, you could try asking your agent to identify potential tasks and create beans for them:
+
+> "Are there any tasks we should be tracking for this project? If so, please create beans for them."
+
+If you already have some beans available, you can ask your agent to recommend what to work on next:
+
+> "What should we work on next?"
+
+You can also specifically ask it to start working on a particular bean:
+
+> "It's time to tackle myproj-123."
+
 ## Contributing
 
 This project currently does not accept contributions -- it's just way too early for that!
