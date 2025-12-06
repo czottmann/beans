@@ -28,3 +28,7 @@ This is going to be a small CLI app that interacts with a .beans/ directory that
 # Building
 
 - `mise build` to build a `./beans` executable
+
+# Testing
+
+- Use `go run .` instead of building the executable first.
