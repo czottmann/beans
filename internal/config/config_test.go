@@ -18,6 +18,9 @@ func TestDefault(t *testing.T) {
 	if cfg.Beans.DefaultStatus != "open" {
 		t.Errorf("DefaultStatus = %q, want \"open\"", cfg.Beans.DefaultStatus)
 	}
+	if cfg.Beans.DefaultType != "task" {
+		t.Errorf("DefaultType = %q, want \"task\"", cfg.Beans.DefaultType)
+	}
 	if len(cfg.Statuses) != 3 {
 		t.Errorf("len(Statuses) = %d, want 3", len(cfg.Statuses))
 	}
@@ -118,6 +121,15 @@ func TestGetDefaultStatus(t *testing.T) {
 	}
 }
 
+func TestGetDefaultType(t *testing.T) {
+	cfg := Default()
+	got := cfg.GetDefaultType()
+
+	if got != "task" {
+		t.Errorf("GetDefaultType() = %q, want \"task\"", got)
+	}
+}
+
 func TestIsArchiveStatus(t *testing.T) {
 	cfg := Default()
 
@@ -209,7 +221,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ConfigFile)
 
-	// Write minimal config (missing id_length, default_status, statuses)
+	// Write minimal config (missing id_length, default_status, default_type, statuses)
 	minimalConfig := `beans:
   prefix: "my-"
 `
@@ -233,6 +245,10 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	// DefaultStatus should be first status name when not specified
 	if cfg.Beans.DefaultStatus != "in-progress" {
 		t.Errorf("DefaultStatus default not applied: got %q, want \"in-progress\"", cfg.Beans.DefaultStatus)
+	}
+	// DefaultType should be first type name when not specified
+	if cfg.Beans.DefaultType != "milestone" {
+		t.Errorf("DefaultType default not applied: got %q, want \"milestone\"", cfg.Beans.DefaultType)
 	}
 }
 

@@ -41,6 +41,15 @@ var checkCmd = &cobra.Command{
 			}
 		}
 
+		// 2b. Check default_type exists in types
+		if len(cfg.Types) > 0 && cfg.GetDefaultType() != "" && !cfg.IsValidType(cfg.GetDefaultType()) {
+			errors = append(errors, fmt.Sprintf("default_type '%s' is not a defined type", cfg.GetDefaultType()))
+		} else if len(cfg.Types) > 0 && cfg.GetDefaultType() != "" {
+			if !checkJSON {
+				fmt.Printf("%s Default type '%s' exists\n", ui.Success.Render("✓"), cfg.GetDefaultType())
+			}
+		}
+
 		// 3. Check all colors are valid
 		for _, s := range cfg.Statuses {
 			if !ui.IsValidColor(s.Color) {

@@ -51,6 +51,9 @@ var createCmd = &cobra.Command{
 			}
 			return fmt.Errorf("invalid type: %s (must be %s)", createType, cfg.TypeList())
 		}
+		if createType == "" {
+			createType = cfg.GetDefaultType()
+		}
 
 		// Determine body content
 		body, err := resolveContent(createBody, createBodyFile)

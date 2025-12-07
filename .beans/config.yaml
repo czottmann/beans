@@ -2,6 +2,7 @@ beans:
     prefix: beans-
     id_length: 4
     default_status: open
+    default_type: task
 statuses:
     - name: in-progress
       color: yellow

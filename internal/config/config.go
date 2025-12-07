@@ -53,6 +53,7 @@ type BeansConfig struct {
 	Prefix        string `yaml:"prefix"`
 	IDLength      int    `yaml:"id_length"`
 	DefaultStatus string `yaml:"default_status,omitempty"`
+	DefaultType   string `yaml:"default_type,omitempty"`
 }
 
 // Default returns a Config with default values.
@@ -62,6 +63,7 @@ func Default() *Config {
 			Prefix:        "",
 			IDLength:      4,
 			DefaultStatus: "open",
+			DefaultType:   "task",
 		},
 		Statuses: DefaultStatuses,
 		Types:    DefaultTypes,
@@ -111,6 +113,11 @@ func Load(root string) (*Config, error) {
 	// Apply default status values if not specified
 	if cfg.Beans.DefaultStatus == "" {
 		cfg.Beans.DefaultStatus = cfg.Statuses[0].Name
+	}
+
+	// Apply default type if not specified
+	if cfg.Beans.DefaultType == "" && len(cfg.Types) > 0 {
+		cfg.Beans.DefaultType = cfg.Types[0].Name
 	}
 
 	return &cfg, nil
@@ -169,6 +176,11 @@ func (c *Config) GetStatus(name string) *StatusConfig {
 // GetDefaultStatus returns the default status name for new beans.
 func (c *Config) GetDefaultStatus() string {
 	return c.Beans.DefaultStatus
+}
+
+// GetDefaultType returns the default type name for new beans.
+func (c *Config) GetDefaultType() string {
+	return c.Beans.DefaultType
 }
 
 // IsArchiveStatus returns true if the given status is marked for archiving.
