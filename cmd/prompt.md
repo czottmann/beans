@@ -38,11 +38,12 @@ If you identify something that should be tracked during your work, create a bean
 
 **If the bean has a checklist:**
 
-- Work through items in order (unless dependencies require otherwise)
-- **After completing each checklist item**, immediately update the bean file to mark it done:
-  - Change `- [ ]` to `- [x]` for the completed item
-- When committing code changes, include the updated bean file with checked-off items
-- Re-read the bean periodically to stay aware of remaining work
+1. Work through items in order (unless dependencies require otherwise)
+2. **After completing each checklist item**, immediately update the bean file to mark it done:
+   - Change `- [ ]` to `- [x]` for the completed item
+   - Edit the file directly at `.beans/<bean-id>.md` or `.beans/<bean-id>-<slug>.md`
+3. When committing code changes, include the updated bean file with checked-off items
+4. Re-read the bean periodically to stay aware of remaining work
 
 ## Relationships
 
