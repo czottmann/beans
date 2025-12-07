@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"hmans.dev/beans/internal/beancore"
 	"hmans.dev/beans/internal/output"
 	"hmans.dev/beans/internal/ui"
 )
@@ -36,10 +34,10 @@ Use flags to specify which properties to update:
   --type         Change the type
   --title        Change the title
   --body         Change the body (use '-' to read from stdin)
-  --link         Add a relationship (format: type:id)
-  --unlink       Remove a relationship (format: type:id)
-  --tag          Add a tag (lowercase, URL-safe)
-  --untag        Remove a tag
+  --link         Add a relationship (format: type:id, can be repeated)
+  --unlink       Remove a relationship (format: type:id, can be repeated)
+  --tag          Add a tag (can be repeated)
+  --untag        Remove a tag (can be repeated)
 
 Relationship types: blocks, duplicates, parent, related`,
 	Args: cobra.ExactArgs(1),
@@ -104,54 +102,35 @@ Relationship types: blocks, duplicates, parent, related`,
 
 		// Add links
 		if len(updateLink) > 0 {
-			for _, link := range updateLink {
-				linkType, targetID, err := parseLink(link)
-				if err != nil {
-					if updateJSON {
-						return output.Error(output.ErrValidation, err.Error())
-					}
-					return err
+			linkWarnings, err := applyLinks(b, updateLink)
+			if err != nil {
+				if updateJSON {
+					return output.Error(output.ErrValidation, err.Error())
 				}
-				if !isKnownLinkType(linkType) {
-					errMsg := fmt.Sprintf("unknown link type: %s (must be blocks, duplicates, parent, related)", linkType)
-					if updateJSON {
-						return output.Error(output.ErrValidation, errMsg)
-					}
-					return fmt.Errorf("%s", errMsg)
-				}
-				// Check if target bean exists
-				if _, err := core.Get(targetID); err != nil {
-					warnings = append(warnings, fmt.Sprintf("target bean '%s' does not exist", targetID))
-				}
-				b.Links = b.Links.Add(linkType, targetID)
+				return err
 			}
+			warnings = append(warnings, linkWarnings...)
 			changes = append(changes, "links")
 		}
 
 		// Remove links
 		if len(updateUnlink) > 0 {
-			for _, link := range updateUnlink {
-				linkType, targetID, err := parseLink(link)
-				if err != nil {
-					if updateJSON {
-						return output.Error(output.ErrValidation, err.Error())
-					}
-					return err
+			if err := removeLinks(b, updateUnlink); err != nil {
+				if updateJSON {
+					return output.Error(output.ErrValidation, err.Error())
 				}
-				b.Links = b.Links.Remove(linkType, targetID)
+				return err
 			}
 			changes = append(changes, "links")
 		}
 
 		// Add tags
 		if len(updateTag) > 0 {
-			for _, tag := range updateTag {
-				if err := b.AddTag(tag); err != nil {
-					if updateJSON {
-						return output.Error(output.ErrValidation, err.Error())
-					}
-					return err
+			if err := applyTags(b, updateTag); err != nil {
+				if updateJSON {
+					return output.Error(output.ErrValidation, err.Error())
 				}
+				return err
 			}
 			changes = append(changes, "tags")
 		}
@@ -220,31 +199,12 @@ func init() {
 	updateCmd.Flags().StringVarP(&updateTitle, "title", "t", "", "New title")
 	updateCmd.Flags().StringVarP(&updateBody, "body", "d", "", "New body (use '-' to read from stdin)")
 	updateCmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Read body from file")
-	updateCmd.Flags().StringArrayVar(&updateLink, "link", nil, "Add relationship (format: type:id)")
-	updateCmd.Flags().StringArrayVar(&updateUnlink, "unlink", nil, "Remove relationship (format: type:id)")
-	updateCmd.Flags().StringArrayVar(&updateTag, "tag", nil, "Add tag (lowercase, URL-safe)")
-	updateCmd.Flags().StringArrayVar(&updateUntag, "untag", nil, "Remove tag")
+	updateCmd.Flags().StringArrayVar(&updateLink, "link", nil, "Add relationship (format: type:id, can be repeated)")
+	updateCmd.Flags().StringArrayVar(&updateUnlink, "unlink", nil, "Remove relationship (format: type:id, can be repeated)")
+	updateCmd.Flags().StringArrayVar(&updateTag, "tag", nil, "Add tag (can be repeated)")
+	updateCmd.Flags().StringArrayVar(&updateUntag, "untag", nil, "Remove tag (can be repeated)")
 	updateCmd.Flags().BoolVar(&updateNoEdit, "no-edit", false, "Skip opening $EDITOR")
 	updateCmd.Flags().BoolVar(&updateJSON, "json", false, "Output as JSON")
 	updateCmd.MarkFlagsMutuallyExclusive("body", "body-file")
 	rootCmd.AddCommand(updateCmd)
-}
-
-// parseLink parses a link in the format "type:id".
-func parseLink(s string) (linkType, targetID string, err error) {
-	parts := strings.SplitN(s, ":", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", fmt.Errorf("invalid link format: %q (expected type:id)", s)
-	}
-	return parts[0], parts[1], nil
-}
-
-// isKnownLinkType checks if a link type is recognized.
-func isKnownLinkType(linkType string) bool {
-	for _, t := range beancore.KnownLinkTypes {
-		if t == linkType {
-			return true
-		}
-	}
-	return false
 }

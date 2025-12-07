@@ -19,6 +19,7 @@ var (
 	createBody     string
 	createBodyFile string
 	createTag      []string
+	createLink     []string
 	createNoEdit   bool
 	createPath     string
 	createJSON     bool
@@ -61,7 +62,7 @@ var createCmd = &cobra.Command{
 		}
 
 		// Check if we're in scripting mode (any flag that suggests non-interactive use)
-		scriptingMode := createBody != "" || createBodyFile != "" || createJSON || createNoEdit || cmd.Flags().Changed("status") || cmd.Flags().Changed("type") || len(createTag) > 0
+		scriptingMode := createBody != "" || createBodyFile != "" || createJSON || createNoEdit || cmd.Flags().Changed("status") || cmd.Flags().Changed("type") || len(createTag) > 0 || len(createLink) > 0
 
 		// Track the type selection (use flag value if provided)
 		beanType := createType
@@ -116,13 +117,20 @@ var createCmd = &cobra.Command{
 		}
 
 		// Add tags if provided
-		for _, tag := range createTag {
-			if err := b.AddTag(tag); err != nil {
-				if createJSON {
-					return output.Error(output.ErrValidation, err.Error())
-				}
-				return err
+		if err := applyTags(b, createTag); err != nil {
+			if createJSON {
+				return output.Error(output.ErrValidation, err.Error())
 			}
+			return err
+		}
+
+		// Add links if provided
+		warnings, err := applyLinks(b, createLink)
+		if err != nil {
+			if createJSON {
+				return output.Error(output.ErrValidation, err.Error())
+			}
+			return err
 		}
 
 		// Set path if provided
@@ -139,7 +147,15 @@ var createCmd = &cobra.Command{
 
 		// Output result
 		if createJSON {
+			if len(warnings) > 0 {
+				return output.SuccessWithWarnings(b, "Bean created", warnings)
+			}
 			return output.Success(b, "Bean created")
+		}
+
+		// Print warnings in text mode
+		for _, w := range warnings {
+			fmt.Println(ui.Warning.Render("Warning: ") + w)
 		}
 
 		fmt.Println(ui.Success.Render("Created ") + ui.ID.Render(b.ID) + " " + ui.Muted.Render(b.Path))
@@ -181,7 +197,8 @@ func init() {
 	createCmd.Flags().StringVarP(&createType, "type", "t", "", "Bean type (e.g., task, bug, epic)")
 	createCmd.Flags().StringVarP(&createBody, "body", "d", "", "Body content (use '-' to read from stdin)")
 	createCmd.Flags().StringVar(&createBodyFile, "body-file", "", "Read body from file")
-	createCmd.Flags().StringArrayVar(&createTag, "tag", nil, "Add tag (lowercase, URL-safe)")
+	createCmd.Flags().StringArrayVar(&createTag, "tag", nil, "Add tag (can be repeated)")
+	createCmd.Flags().StringArrayVar(&createLink, "link", nil, "Add relationship (format: type:id, can be repeated)")
 	createCmd.Flags().BoolVar(&createNoEdit, "no-edit", false, "Skip opening $EDITOR")
 	createCmd.Flags().StringVarP(&createPath, "path", "p", "", "Subdirectory within .beans/")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")
