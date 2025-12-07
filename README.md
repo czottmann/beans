@@ -47,6 +47,8 @@ But more importantly, you'll want to get your coding agent set up to use it. Let
 
 ## Agent Configuration
 
+We'll need to teach your coding agent that it should use Beans to track tasks, and how to do so. The exact steps will depend on which agent you're using.
+
 ### Claude Code
 
 Beans integrates with [Claude Code](https://claude.ai/code) via hooks. Add this to your `.claude/settings.json`:
