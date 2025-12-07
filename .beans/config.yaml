@@ -13,11 +13,16 @@ statuses:
 types:
     - name: idea
       color: yellow
+      description: A concept or suggestion to explore later
     - name: epic
       color: purple
+      description: A large initiative containing multiple related tasks
     - name: bug
       color: red
+      description: Something that is broken and needs fixing
     - name: feature
       color: green
+      description: A new capability or enhancement to add
     - name: task
       color: blue
+      description: A concrete piece of work that needs to be done
