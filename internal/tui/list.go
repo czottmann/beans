@@ -27,11 +27,13 @@ func (i beanItem) FilterValue() string { return i.bean.Title + " " + i.bean.ID }
 
 // itemDelegate handles rendering of list items
 type itemDelegate struct {
-	cfg *config.Config
+	cfg      *config.Config
+	showTags bool
+	width    int
 }
 
 func newItemDelegate(cfg *config.Config) itemDelegate {
-	return itemDelegate{cfg: cfg}
+	return itemDelegate{cfg: cfg, showTags: false, width: 0}
 }
 
 func (d itemDelegate) Height() int                             { return 1 }
@@ -58,8 +60,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		typeColor = typeCfg.Color
 	}
 
-	// Calculate max title width
-	maxTitleWidth := max(0, m.Width()-ui.ColWidthID-ui.ColWidthStatus-ui.ColWidthType-4)
+	// Calculate max title width (accounting for tags column if shown)
+	baseWidth := ui.ColWidthID + ui.ColWidthStatus + ui.ColWidthType + 4
+	if d.showTags {
+		baseWidth += ui.ColWidthTags
+	}
+	maxTitleWidth := max(0, m.Width()-baseWidth)
 
 	str := ui.RenderBeanRow(
 		item.bean.ID,
@@ -73,6 +79,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 			MaxTitleWidth: maxTitleWidth,
 			ShowCursor:    true,
 			IsSelected:    index == m.Index(),
+			Tags:          item.bean.Tags,
+			ShowTags:      d.showTags,
 		},
 	)
 
@@ -81,12 +89,14 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 // listModel is the model for the bean list view
 type listModel struct {
-	list   list.Model
-	core   *beancore.Core
-	config *config.Config
-	width  int
-	height int
-	err    error
+	list     list.Model
+	core     *beancore.Core
+	config   *config.Config
+	width    int
+	height   int
+	err      error
+	hasTags  bool // whether any beans have tags
+	showTags bool // whether to show tags column (based on width)
 }
 
 func newListModel(core *beancore.Core, cfg *config.Config) listModel {
@@ -134,6 +144,9 @@ func (m listModel) loadBeans() tea.Msg {
 	return beansLoadedMsg{beans}
 }
 
+// minWidthForTags is the minimum terminal width to show tags column
+const minWidthForTags = 100
+
 func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -143,14 +156,25 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 		m.height = msg.Height
 		// Reserve space for border and footer
 		m.list.SetSize(msg.Width-2, msg.Height-4)
+		// Update showTags based on width
+		m.showTags = m.hasTags && m.width >= minWidthForTags
+		m.updateDelegate()
 
 	case beansLoadedMsg:
 		sortBeans(msg.beans, m.config.StatusNames())
 		items := make([]list.Item, len(msg.beans))
+		// Check if any beans have tags
+		m.hasTags = false
 		for i, b := range msg.beans {
 			items[i] = beanItem{bean: b, cfg: m.config}
+			if len(b.Tags) > 0 {
+				m.hasTags = true
+			}
 		}
 		m.list.SetItems(items)
+		// Update showTags based on hasTags and width
+		m.showTags = m.hasTags && m.width >= minWidthForTags
+		m.updateDelegate()
 		return m, nil
 
 	case errMsg:
@@ -173,6 +197,16 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 	// Always forward to the list component
 	m.list, cmd = m.list.Update(msg)
 	return m, cmd
+}
+
+// updateDelegate updates the list delegate with current showTags setting
+func (m *listModel) updateDelegate() {
+	delegate := itemDelegate{
+		cfg:      m.config,
+		showTags: m.showTags,
+		width:    m.width,
+	}
+	m.list.SetDelegate(delegate)
 }
 
 func (m listModel) View() string {

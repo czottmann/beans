@@ -21,6 +21,8 @@ var (
 	listLinkedAs   []string
 	listNoLinks    []string
 	listNoLinkedAs []string
+	listTag        []string
+	listNoTag      []string
 	listQuiet      bool
 	listSort       string
 	listFull       bool
@@ -95,6 +97,8 @@ var listCmd = &cobra.Command{
 		beans = filterByLinkedAs(beans, linkedAsFilters, idx)
 		beans = excludeByLinks(beans, noLinksFilters)
 		beans = excludeByLinkedAs(beans, noLinkedAsFilters, idx)
+		beans = filterByTags(beans, listTag)
+		beans = excludeByTags(beans, listNoTag)
 
 		// Sort beans
 		sortBeans(beans, listSort, cfg)
@@ -132,24 +136,48 @@ var listCmd = &cobra.Command{
 		}
 		maxIDWidth += 2 // padding
 
+		// Check if any beans have tags
+		hasTags := false
+		for _, b := range beans {
+			if len(b.Tags) > 0 {
+				hasTags = true
+				break
+			}
+		}
+
 		// Column styles with widths for alignment
 		idStyle := lipgloss.NewStyle().Width(maxIDWidth)
 		statusStyle := lipgloss.NewStyle().Width(14)
 		typeStyle := lipgloss.NewStyle().Width(12)
+		tagsStyle := lipgloss.NewStyle().Width(20)
 		titleStyle := lipgloss.NewStyle()
 
 		// Header style
 		headerCol := lipgloss.NewStyle().Foreground(ui.ColorMuted)
 
 		// Header
-		header := lipgloss.JoinHorizontal(lipgloss.Top,
-			idStyle.Render(headerCol.Render("ID")),
-			statusStyle.Render(headerCol.Render("STATUS")),
-			typeStyle.Render(headerCol.Render("TYPE")),
-			titleStyle.Render(headerCol.Render("TITLE")),
-		)
+		var header string
+		var dividerWidth int
+		if hasTags {
+			header = lipgloss.JoinHorizontal(lipgloss.Top,
+				idStyle.Render(headerCol.Render("ID")),
+				statusStyle.Render(headerCol.Render("STATUS")),
+				typeStyle.Render(headerCol.Render("TYPE")),
+				tagsStyle.Render(headerCol.Render("TAGS")),
+				titleStyle.Render(headerCol.Render("TITLE")),
+			)
+			dividerWidth = maxIDWidth + 14 + 12 + 20 + 30
+		} else {
+			header = lipgloss.JoinHorizontal(lipgloss.Top,
+				idStyle.Render(headerCol.Render("ID")),
+				statusStyle.Render(headerCol.Render("STATUS")),
+				typeStyle.Render(headerCol.Render("TYPE")),
+				titleStyle.Render(headerCol.Render("TITLE")),
+			)
+			dividerWidth = maxIDWidth + 14 + 12 + 30
+		}
 		fmt.Println(header)
-		fmt.Println(ui.Muted.Render(strings.Repeat("─", maxIDWidth+14+12+30)))
+		fmt.Println(ui.Muted.Render(strings.Repeat("─", dividerWidth)))
 
 		for _, b := range beans {
 			// Get status color from config
@@ -166,12 +194,24 @@ var listCmd = &cobra.Command{
 				typeColor = typeCfg.Color
 			}
 
-			row := lipgloss.JoinHorizontal(lipgloss.Top,
-				idStyle.Render(ui.ID.Render(b.ID)),
-				statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
-				typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
-				titleStyle.Render(truncate(b.Title, 50)),
-			)
+			var row string
+			if hasTags {
+				tagsStr := truncate(strings.Join(b.Tags, ", "), 18)
+				row = lipgloss.JoinHorizontal(lipgloss.Top,
+					idStyle.Render(ui.ID.Render(b.ID)),
+					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
+					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
+					tagsStyle.Render(ui.Muted.Render(tagsStr)),
+					titleStyle.Render(truncate(b.Title, 50)),
+				)
+			} else {
+				row = lipgloss.JoinHorizontal(lipgloss.Top,
+					idStyle.Render(ui.ID.Render(b.ID)),
+					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
+					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
+					titleStyle.Render(truncate(b.Title, 50)),
+				)
+			}
 			fmt.Println(row)
 		}
 
@@ -482,6 +522,46 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// filterByTags filters beans that have ANY of the specified tags (OR logic).
+func filterByTags(beans []*bean.Bean, tags []string) []*bean.Bean {
+	if len(tags) == 0 {
+		return beans
+	}
+
+	var filtered []*bean.Bean
+	for _, b := range beans {
+		for _, tag := range tags {
+			if b.HasTag(tag) {
+				filtered = append(filtered, b)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// excludeByTags excludes beans that have ANY of the specified tags.
+func excludeByTags(beans []*bean.Bean, tags []string) []*bean.Bean {
+	if len(tags) == 0 {
+		return beans
+	}
+
+	var filtered []*bean.Bean
+	for _, b := range beans {
+		excluded := false
+		for _, tag := range tags {
+			if b.HasTag(tag) {
+				excluded = true
+				break
+			}
+		}
+		if !excluded {
+			filtered = append(filtered, b)
+		}
+	}
+	return filtered
+}
+
 func init() {
 	listCmd.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
 	listCmd.Flags().StringArrayVarP(&listStatus, "status", "s", nil, "Filter by status (can be repeated)")
@@ -490,6 +570,8 @@ func init() {
 	listCmd.Flags().StringArrayVar(&listLinkedAs, "linked-as", nil, "Filter by incoming relationship (format: type or type:id)")
 	listCmd.Flags().StringArrayVar(&listNoLinks, "no-links", nil, "Exclude beans with outgoing relationship (format: type or type:id)")
 	listCmd.Flags().StringArrayVar(&listNoLinkedAs, "no-linked-as", nil, "Exclude beans with incoming relationship (format: type or type:id)")
+	listCmd.Flags().StringArrayVar(&listTag, "tag", nil, "Filter by tag (can be repeated, OR logic)")
+	listCmd.Flags().StringArrayVar(&listNoTag, "no-tag", nil, "Exclude beans with tag (can be repeated)")
 	listCmd.Flags().BoolVarP(&listQuiet, "quiet", "q", false, "Only output IDs (one per line)")
 	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: created, updated, status, id (default: not-done/done, then type)")
 	listCmd.Flags().BoolVar(&listFull, "full", false, "Include bean body in JSON output")

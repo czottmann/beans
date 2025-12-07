@@ -20,6 +20,8 @@ var (
 	updateBodyFile string
 	updateLink     []string
 	updateUnlink   []string
+	updateTag      []string
+	updateUntag    []string
 	updateNoEdit   bool
 	updateJSON     bool
 )
@@ -36,6 +38,8 @@ Use flags to specify which properties to update:
   --body         Change the body (use '-' to read from stdin)
   --link         Add a relationship (format: type:id)
   --unlink       Remove a relationship (format: type:id)
+  --tag          Add a tag (lowercase, URL-safe)
+  --untag        Remove a tag
 
 Relationship types: blocks, duplicates, parent, related`,
 	Args: cobra.ExactArgs(1),
@@ -139,12 +143,33 @@ Relationship types: blocks, duplicates, parent, related`,
 			changes = append(changes, "links")
 		}
 
+		// Add tags
+		if len(updateTag) > 0 {
+			for _, tag := range updateTag {
+				if err := b.AddTag(tag); err != nil {
+					if updateJSON {
+						return output.Error(output.ErrValidation, err.Error())
+					}
+					return err
+				}
+			}
+			changes = append(changes, "tags")
+		}
+
+		// Remove tags
+		if len(updateUntag) > 0 {
+			for _, tag := range updateUntag {
+				b.RemoveTag(tag)
+			}
+			changes = append(changes, "tags")
+		}
+
 		// Check if anything was changed
 		if len(changes) == 0 {
 			if updateJSON {
 				return output.Error(output.ErrValidation, "no changes specified")
 			}
-			return fmt.Errorf("no changes specified (use --status, --type, --title, --body, --link, or --unlink)")
+			return fmt.Errorf("no changes specified (use --status, --type, --title, --body, --link, --unlink, --tag, or --untag)")
 		}
 
 		// Save the bean
@@ -197,6 +222,8 @@ func init() {
 	updateCmd.Flags().StringVar(&updateBodyFile, "body-file", "", "Read body from file")
 	updateCmd.Flags().StringArrayVar(&updateLink, "link", nil, "Add relationship (format: type:id)")
 	updateCmd.Flags().StringArrayVar(&updateUnlink, "unlink", nil, "Remove relationship (format: type:id)")
+	updateCmd.Flags().StringArrayVar(&updateTag, "tag", nil, "Add tag (lowercase, URL-safe)")
+	updateCmd.Flags().StringArrayVar(&updateUntag, "untag", nil, "Remove tag")
 	updateCmd.Flags().BoolVar(&updateNoEdit, "no-edit", false, "Skip opening $EDITOR")
 	updateCmd.Flags().BoolVar(&updateJSON, "json", false, "Output as JSON")
 	updateCmd.MarkFlagsMutuallyExclusive("body", "body-file")

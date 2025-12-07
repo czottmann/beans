@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -105,6 +106,62 @@ func (l Links) Remove(linkType, target string) Links {
 	return result
 }
 
+// tagPattern matches valid tags: lowercase letters, numbers, and hyphens.
+// Must start with a letter, can contain hyphens but not consecutively or at the end.
+var tagPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+
+// ValidateTag checks if a tag is valid (lowercase, URL-safe, single word).
+func ValidateTag(tag string) error {
+	if tag == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+	if !tagPattern.MatchString(tag) {
+		return fmt.Errorf("invalid tag %q: must be lowercase, start with a letter, and contain only letters, numbers, and hyphens", tag)
+	}
+	return nil
+}
+
+// NormalizeTag converts a tag to its canonical form (lowercase).
+func NormalizeTag(tag string) string {
+	return strings.ToLower(strings.TrimSpace(tag))
+}
+
+// HasTag returns true if the bean has the specified tag.
+func (b *Bean) HasTag(tag string) bool {
+	normalized := NormalizeTag(tag)
+	for _, t := range b.Tags {
+		if t == normalized {
+			return true
+		}
+	}
+	return false
+}
+
+// AddTag adds a tag to the bean if it doesn't already exist.
+// Returns an error if the tag is invalid.
+func (b *Bean) AddTag(tag string) error {
+	normalized := NormalizeTag(tag)
+	if err := ValidateTag(normalized); err != nil {
+		return err
+	}
+	if !b.HasTag(normalized) {
+		b.Tags = append(b.Tags, normalized)
+	}
+	return nil
+}
+
+// RemoveTag removes a tag from the bean.
+func (b *Bean) RemoveTag(tag string) {
+	normalized := NormalizeTag(tag)
+	result := make([]string, 0, len(b.Tags))
+	for _, t := range b.Tags {
+		if t != normalized {
+			result = append(result, t)
+		}
+	}
+	b.Tags = result
+}
+
 // Bean represents an issue stored as a markdown file with front matter.
 type Bean struct {
 	// ID is the unique NanoID identifier (from filename).
@@ -118,6 +175,7 @@ type Bean struct {
 	Title     string     `yaml:"title" json:"title"`
 	Status    string     `yaml:"status" json:"status"`
 	Type      string     `yaml:"type,omitempty" json:"type,omitempty"`
+	Tags      []string   `yaml:"tags,omitempty" json:"tags,omitempty"`
 	CreatedAt *time.Time `yaml:"created_at,omitempty" json:"created_at,omitempty"`
 	UpdatedAt *time.Time `yaml:"updated_at,omitempty" json:"updated_at,omitempty"`
 
@@ -134,6 +192,7 @@ type frontMatter struct {
 	Title     string      `yaml:"title"`
 	Status    string      `yaml:"status"`
 	Type      string      `yaml:"type,omitempty"`
+	Tags      []string    `yaml:"tags,omitempty"`
 	CreatedAt *time.Time  `yaml:"created_at,omitempty"`
 	UpdatedAt *time.Time  `yaml:"updated_at,omitempty"`
 	Links     interface{} `yaml:"links,omitempty"`
@@ -182,6 +241,7 @@ func Parse(r io.Reader) (*Bean, error) {
 		Title:     fm.Title,
 		Status:    fm.Status,
 		Type:      fm.Type,
+		Tags:      fm.Tags,
 		CreatedAt: fm.CreatedAt,
 		UpdatedAt: fm.UpdatedAt,
 		Body:      string(body),
@@ -194,6 +254,7 @@ type renderFrontMatter struct {
 	Title     string     `yaml:"title"`
 	Status    string     `yaml:"status"`
 	Type      string     `yaml:"type,omitempty"`
+	Tags      []string   `yaml:"tags,omitempty"`
 	CreatedAt *time.Time `yaml:"created_at,omitempty"`
 	UpdatedAt *time.Time `yaml:"updated_at,omitempty"`
 	Links     Links      `yaml:"links,omitempty"`
@@ -205,6 +266,7 @@ func (b *Bean) Render() ([]byte, error) {
 		Title:     b.Title,
 		Status:    b.Status,
 		Type:      b.Type,
+		Tags:      b.Tags,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 		Links:     b.Links,

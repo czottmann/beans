@@ -668,3 +668,325 @@ func TestLinksHelperMethods(t *testing.T) {
 		}
 	})
 }
+
+func TestValidateTag(t *testing.T) {
+	tests := []struct {
+		tag     string
+		wantErr bool
+	}{
+		{"frontend", false},
+		{"backend", false},
+		{"tech-debt", false},
+		{"v1", false},
+		{"a", false},
+		{"urgent2", false},
+		{"wont-fix", false},
+		{"a-b-c", false},
+		{"", true},           // empty
+		{"Frontend", true},   // uppercase
+		{"URGENT", true},     // all uppercase
+		{"123", true},        // starts with number
+		{"123abc", true},     // starts with number
+		{"my tag", true},     // contains space
+		{"my_tag", true},     // contains underscore
+		{"my--tag", true},    // consecutive hyphens
+		{"-tag", true},       // starts with hyphen
+		{"tag-", true},       // ends with hyphen
+		{"my.tag", true},     // contains dot
+		{"my/tag", true},     // contains slash
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tag, func(t *testing.T) {
+			err := ValidateTag(tt.tag)
+			if tt.wantErr && err == nil {
+				t.Errorf("ValidateTag(%q) = nil, want error", tt.tag)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ValidateTag(%q) = %v, want nil", tt.tag, err)
+			}
+		})
+	}
+}
+
+func TestNormalizeTag(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"frontend", "frontend"},
+		{"FRONTEND", "frontend"},
+		{"FrontEnd", "frontend"},
+		{"  frontend  ", "frontend"},
+		{"  FRONTEND  ", "frontend"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := NormalizeTag(tt.input)
+			if result != tt.expected {
+				t.Errorf("NormalizeTag(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBeanTagMethods(t *testing.T) {
+	t.Run("HasTag", func(t *testing.T) {
+		b := &Bean{Tags: []string{"frontend", "urgent"}}
+		if !b.HasTag("frontend") {
+			t.Error("expected HasTag('frontend') = true")
+		}
+		if !b.HasTag("urgent") {
+			t.Error("expected HasTag('urgent') = true")
+		}
+		if b.HasTag("backend") {
+			t.Error("expected HasTag('backend') = false")
+		}
+		// Case insensitive lookup
+		if !b.HasTag("FRONTEND") {
+			t.Error("expected HasTag('FRONTEND') = true (case insensitive)")
+		}
+	})
+
+	t.Run("AddTag", func(t *testing.T) {
+		b := &Bean{Tags: []string{"frontend"}}
+
+		// Add new valid tag
+		if err := b.AddTag("backend"); err != nil {
+			t.Errorf("AddTag('backend') error: %v", err)
+		}
+		if len(b.Tags) != 2 {
+			t.Errorf("expected 2 tags, got %d", len(b.Tags))
+		}
+
+		// Adding duplicate should not add
+		if err := b.AddTag("frontend"); err != nil {
+			t.Errorf("AddTag('frontend') error: %v", err)
+		}
+		if len(b.Tags) != 2 {
+			t.Errorf("expected 2 tags (no duplicate), got %d", len(b.Tags))
+		}
+
+		// Adding invalid tag should error
+		if err := b.AddTag("Invalid Tag"); err == nil {
+			t.Error("expected AddTag('Invalid Tag') to error")
+		}
+	})
+
+	t.Run("RemoveTag", func(t *testing.T) {
+		b := &Bean{Tags: []string{"frontend", "backend", "urgent"}}
+
+		b.RemoveTag("backend")
+		if len(b.Tags) != 2 {
+			t.Errorf("expected 2 tags after remove, got %d", len(b.Tags))
+		}
+		if b.HasTag("backend") {
+			t.Error("expected backend tag to be removed")
+		}
+
+		// Case insensitive removal
+		b.RemoveTag("FRONTEND")
+		if len(b.Tags) != 1 {
+			t.Errorf("expected 1 tag after remove, got %d", len(b.Tags))
+		}
+		if b.HasTag("frontend") {
+			t.Error("expected frontend tag to be removed")
+		}
+
+		// Remove non-existent tag (should not error)
+		b.RemoveTag("nonexistent")
+		if len(b.Tags) != 1 {
+			t.Errorf("expected 1 tag (no change), got %d", len(b.Tags))
+		}
+	})
+}
+
+func TestParseWithTags(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		expectedTags []string
+	}{
+		{
+			name: "single tag",
+			input: `---
+title: Test
+status: open
+tags:
+  - frontend
+---`,
+			expectedTags: []string{"frontend"},
+		},
+		{
+			name: "multiple tags",
+			input: `---
+title: Test
+status: open
+tags:
+  - frontend
+  - urgent
+  - tech-debt
+---`,
+			expectedTags: []string{"frontend", "urgent", "tech-debt"},
+		},
+		{
+			name: "inline tags syntax",
+			input: `---
+title: Test
+status: open
+tags: [frontend, backend]
+---`,
+			expectedTags: []string{"frontend", "backend"},
+		},
+		{
+			name: "no tags",
+			input: `---
+title: Test
+status: open
+---`,
+			expectedTags: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bean, err := Parse(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(tt.expectedTags) == 0 && len(bean.Tags) == 0 {
+				return // Both empty, OK
+			}
+
+			if len(bean.Tags) != len(tt.expectedTags) {
+				t.Errorf("Tags count = %d, want %d", len(bean.Tags), len(tt.expectedTags))
+				return
+			}
+
+			for i, expected := range tt.expectedTags {
+				if bean.Tags[i] != expected {
+					t.Errorf("Tags[%d] = %q, want %q", i, bean.Tags[i], expected)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderWithTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		bean     *Bean
+		contains []string
+	}{
+		{
+			name: "with single tag",
+			bean: &Bean{
+				Title:  "Test Bean",
+				Status: "open",
+				Tags:   []string{"frontend"},
+			},
+			contains: []string{
+				"tags:",
+				"- frontend",
+			},
+		},
+		{
+			name: "with multiple tags",
+			bean: &Bean{
+				Title:  "Test Bean",
+				Status: "open",
+				Tags:   []string{"frontend", "urgent", "tech-debt"},
+			},
+			contains: []string{
+				"tags:",
+				"- frontend",
+				"- urgent",
+				"- tech-debt",
+			},
+		},
+		{
+			name: "without tags",
+			bean: &Bean{
+				Title:  "Test Bean",
+				Status: "open",
+			},
+			contains: []string{
+				"title: Test Bean",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := tt.bean.Render()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			result := string(output)
+			for _, want := range tt.contains {
+				if !strings.Contains(result, want) {
+					t.Errorf("output missing %q\ngot:\n%s", want, result)
+				}
+			}
+
+			// Check that empty tags don't appear in output
+			if len(tt.bean.Tags) == 0 && strings.Contains(result, "tags:") {
+				t.Errorf("output should not contain 'tags:' when no tags\ngot:\n%s", result)
+			}
+		})
+	}
+}
+
+func TestTagsRoundtrip(t *testing.T) {
+	tests := []struct {
+		name string
+		tags []string
+	}{
+		{
+			name: "single tag",
+			tags: []string{"frontend"},
+		},
+		{
+			name: "multiple tags",
+			tags: []string{"frontend", "backend", "urgent"},
+		},
+		{
+			name: "hyphenated tags",
+			tags: []string{"tech-debt", "wont-fix", "needs-review"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			original := &Bean{
+				Title:  "Test",
+				Status: "open",
+				Tags:   tt.tags,
+			}
+
+			rendered, err := original.Render()
+			if err != nil {
+				t.Fatalf("Render error: %v", err)
+			}
+
+			parsed, err := Parse(strings.NewReader(string(rendered)))
+			if err != nil {
+				t.Fatalf("Parse error: %v", err)
+			}
+
+			if len(parsed.Tags) != len(tt.tags) {
+				t.Errorf("Tags count: got %d, want %d", len(parsed.Tags), len(tt.tags))
+				return
+			}
+
+			for i, expected := range tt.tags {
+				if parsed.Tags[i] != expected {
+					t.Errorf("Tags[%d] = %q, want %q", i, parsed.Tags[i], expected)
+				}
+			}
+		})
+	}
+}

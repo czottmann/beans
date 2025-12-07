@@ -182,6 +182,8 @@ type BeanRowConfig struct {
 	MaxTitleWidth  int  // 0 means no truncation
 	ShowCursor     bool // Show selection cursor
 	IsSelected     bool
+	Tags           []string // Tags to display (optional)
+	ShowTags       bool     // Whether to show tags column
 }
 
 // Standard column widths for bean lists
@@ -189,14 +191,16 @@ const (
 	ColWidthID     = 12
 	ColWidthStatus = 14
 	ColWidthType   = 12
+	ColWidthTags   = 18
 )
 
-// RenderBeanRow renders a bean as a single row with ID, Type, Status, Title
+// RenderBeanRow renders a bean as a single row with ID, Type, Status, Tags (optional), Title
 func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string {
 	// Column styles
 	idStyle := lipgloss.NewStyle().Width(ColWidthID)
 	typeStyle := lipgloss.NewStyle().Width(ColWidthType)
 	statusStyle := lipgloss.NewStyle().Width(ColWidthStatus)
+	tagsStyle := lipgloss.NewStyle().Width(ColWidthTags)
 
 	// Build columns
 	idCol := idStyle.Render(ID.Render(id))
@@ -208,6 +212,19 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 	typeCol := typeStyle.Render(typeText)
 
 	statusCol := statusStyle.Render(RenderStatusTextWithColor(status, cfg.StatusColor, cfg.IsArchive))
+
+	// Tags column (optional)
+	var tagsCol string
+	if cfg.ShowTags {
+		tagsText := ""
+		if len(cfg.Tags) > 0 {
+			tagsText = strings.Join(cfg.Tags, ", ")
+			if len(tagsText) > ColWidthTags-2 {
+				tagsText = tagsText[:ColWidthTags-5] + "..."
+			}
+		}
+		tagsCol = tagsStyle.Render(Muted.Render(tagsText))
+	}
 
 	// Title (truncate if needed)
 	displayTitle := title
@@ -231,5 +248,8 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 		titleStyled = displayTitle
 	}
 
+	if cfg.ShowTags {
+		return cursor + idCol + typeCol + statusCol + tagsCol + titleStyled
+	}
 	return cursor + idCol + typeCol + statusCol + titleStyled
 }

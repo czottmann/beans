@@ -2,8 +2,11 @@
 title: Detect circular dependencies in relationships
 status: open
 type: feature
+tags:
+    - validation
+    - relationships
 created_at: 2025-12-07T11:29:37Z
-updated_at: 2025-12-07T11:36:39Z
+updated_at: 2025-12-07T19:01:06Z
 ---
 
 

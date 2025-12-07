@@ -2,8 +2,11 @@
 title: Use beans as a release management tool
 status: open
 type: idea
+tags:
+    - cli
+    - changelog
 created_at: 2025-12-07T12:30:19Z
-updated_at: 2025-12-07T12:30:19Z
+updated_at: 2025-12-07T19:00:57Z
 ---
 
 ## Overview

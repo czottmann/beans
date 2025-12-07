@@ -2,11 +2,11 @@
 title: Use semantic markdown sections in bean bodies
 status: open
 type: idea
+tags:
+    - parsing
+    - schema
 created_at: 2025-12-07T12:33:57Z
-updated_at: 2025-12-07T12:34:00Z
-links:
-  relates-to:
-    - beans-5p12
+updated_at: 2025-12-07T19:00:57Z
 ---
 
 ## Overview

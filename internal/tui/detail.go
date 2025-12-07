@@ -237,6 +237,13 @@ func (m detailModel) renderHeader() string {
 	headerContent.WriteString("\n")
 	headerContent.WriteString(id + "  " + status)
 
+	// Add tags if present
+	if len(m.bean.Tags) > 0 {
+		tagsStr := strings.Join(m.bean.Tags, ", ")
+		headerContent.WriteString("  ")
+		headerContent.WriteString(ui.Muted.Render(tagsStr))
+	}
+
 	// Add relationships section if there are any
 	if len(m.links) > 0 {
 		headerContent.WriteString("\n")

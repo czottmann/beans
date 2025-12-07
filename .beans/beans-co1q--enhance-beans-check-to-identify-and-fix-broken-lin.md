@@ -2,8 +2,11 @@
 title: Enhance beans check to identify and fix broken links
 status: open
 type: feature
+tags:
+    - validation
+    - relationships
 created_at: 2025-12-07T11:27:02Z
-updated_at: 2025-12-07T17:08:36Z
+updated_at: 2025-12-07T19:01:06Z
 links:
     - parent: beans-7lmv
 ---

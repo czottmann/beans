@@ -2,6 +2,10 @@
 title: Add filtering to list command
 status: open
 type: feature
+tags:
+    - cli
+    - filtering
+updated_at: 2025-12-07T19:01:13Z
 ---
 
 Add filtering and search capabilities to the `beans list` command.

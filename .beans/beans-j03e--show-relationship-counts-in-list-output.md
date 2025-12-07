@@ -2,8 +2,11 @@
 title: Show relationship counts in list output
 status: open
 type: feature
+tags:
+    - cli
+    - relationships
 created_at: 2025-12-07T11:29:37Z
-updated_at: 2025-12-07T11:36:40Z
+updated_at: 2025-12-07T19:01:13Z
 ---
 
 

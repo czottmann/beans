@@ -2,8 +2,10 @@
 title: Add stats/summary command
 status: open
 type: feature
+tags:
+    - cli
 created_at: 2025-12-07T17:08:36Z
-updated_at: 2025-12-07T17:08:36Z
+updated_at: 2025-12-07T19:01:13Z
 links:
     - parent: beans-7lmv
 ---

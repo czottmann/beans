@@ -66,6 +66,10 @@ var showCmd = &cobra.Command{
 		header.WriteString(ui.ID.Render(b.ID))
 		header.WriteString(" ")
 		header.WriteString(ui.RenderStatusWithColor(b.Status, statusColor, isArchive))
+		if len(b.Tags) > 0 {
+			header.WriteString("  ")
+			header.WriteString(ui.Muted.Render(strings.Join(b.Tags, ", ")))
+		}
 		header.WriteString("\n")
 		header.WriteString(ui.Title.Render(b.Title))
 

@@ -18,6 +18,7 @@ var (
 	createType     string
 	createBody     string
 	createBodyFile string
+	createTag      []string
 	createNoEdit   bool
 	createPath     string
 	createJSON     bool
@@ -60,7 +61,7 @@ var createCmd = &cobra.Command{
 		}
 
 		// Check if we're in scripting mode (any flag that suggests non-interactive use)
-		scriptingMode := createBody != "" || createBodyFile != "" || createJSON || createNoEdit || cmd.Flags().Changed("status") || cmd.Flags().Changed("type")
+		scriptingMode := createBody != "" || createBodyFile != "" || createJSON || createNoEdit || cmd.Flags().Changed("status") || cmd.Flags().Changed("type") || len(createTag) > 0
 
 		// Track the type selection (use flag value if provided)
 		beanType := createType
@@ -112,6 +113,16 @@ var createCmd = &cobra.Command{
 			Status: status,
 			Type:   beanType,
 			Body:   body,
+		}
+
+		// Add tags if provided
+		for _, tag := range createTag {
+			if err := b.AddTag(tag); err != nil {
+				if createJSON {
+					return output.Error(output.ErrValidation, err.Error())
+				}
+				return err
+			}
 		}
 
 		// Set path if provided
@@ -170,6 +181,7 @@ func init() {
 	createCmd.Flags().StringVarP(&createType, "type", "t", "", "Bean type (e.g., task, bug, epic)")
 	createCmd.Flags().StringVarP(&createBody, "body", "d", "", "Body content (use '-' to read from stdin)")
 	createCmd.Flags().StringVar(&createBodyFile, "body-file", "", "Read body from file")
+	createCmd.Flags().StringArrayVar(&createTag, "tag", nil, "Add tag (lowercase, URL-safe)")
 	createCmd.Flags().BoolVar(&createNoEdit, "no-edit", false, "Skip opening $EDITOR")
 	createCmd.Flags().StringVarP(&createPath, "path", "p", "", "Subdirectory within .beans/")
 	createCmd.Flags().BoolVar(&createJSON, "json", false, "Output as JSON")

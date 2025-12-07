@@ -2,8 +2,11 @@
 title: Add beans types command for managing types in config.yaml
 status: open
 type: feature
+tags:
+    - cli
+    - config
 created_at: 2025-12-07T16:00:49Z
-updated_at: 2025-12-07T16:00:49Z
+updated_at: 2025-12-07T19:01:06Z
 ---
 
 ## Summary

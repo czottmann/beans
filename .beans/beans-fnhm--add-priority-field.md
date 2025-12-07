@@ -2,8 +2,10 @@
 title: Add priority field
 status: open
 type: feature
+tags:
+    - schema
 created_at: 2025-12-06T22:04:39Z
-updated_at: 2025-12-07T17:08:36Z
+updated_at: 2025-12-07T19:01:06Z
 links:
     - parent: beans-v8qj
     - parent: beans-7lmv
