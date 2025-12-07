@@ -12,7 +12,7 @@ All commands support --json for machine-readable output. Use this flag to parse 
 1. FIRST: Create a bean with `beans create "Title" -t <type> -d "Description..." -s in-progress --no-edit`
 2. THEN: Do the work
 3. FINALLY: Mark done with `beans update <bean-id> --status done`
-4. COMMIT: Include both your code changes AND the bean file(s) in the commit
+4. IF and WHEN you COMMIT: Include both your code changes AND the bean file(s) in the commit!
 
 **Do NOT use the TodoWrite tool or markdown TODOs.** Use beans for all task tracking.
 
