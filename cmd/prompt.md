@@ -91,7 +91,7 @@ Use `--no-status` to exclude beans with specific statuses:
 
 ## Cleaning up beans
 
-- `beans archive` will archive (delete) beans marked as done.
+- `beans archive` will archive (delete) beans marked as done. ONLY run this when I explicitly tell you to.
 
 ## Bean file structure
 
