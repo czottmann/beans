@@ -20,7 +20,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "5", Status: "scrapped", Type: "task", Title: "E"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		expected := []string{"backlog", "todo", "in-progress", "completed", "scrapped"}
 		for i, want := range expected {
@@ -39,7 +39,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "5", Status: "todo", Type: "feature", Title: "E"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		expected := []string{"milestone", "epic", "bug", "feature", "task"}
 		for i, want := range expected {
@@ -56,7 +56,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "3", Status: "todo", Type: "task", Title: "Mango"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		expected := []string{"Apple", "Mango", "Zebra"}
 		for i, want := range expected {
@@ -73,7 +73,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "3", Status: "todo", Type: "task", Title: "MANGO"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		expected := []string{"Apple", "MANGO", "zebra"}
 		for i, want := range expected {
@@ -92,7 +92,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "5", Status: "backlog", Type: "epic", Title: "X"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		// Expected order:
 		// 1. backlog/epic/X
@@ -116,7 +116,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "3", Status: "backlog", Type: "task", Title: "C"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		// unknown status should be last
 		if beans[2].Status != "unknown" {
@@ -131,7 +131,7 @@ func TestSortBeans(t *testing.T) {
 			{ID: "3", Status: "todo", Type: "bug", Title: "C"},
 		}
 
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 
 		// unknown type should be last within todo status
 		if beans[2].Type != "unknown" {
@@ -141,7 +141,7 @@ func TestSortBeans(t *testing.T) {
 
 	t.Run("empty slice does not panic", func(t *testing.T) {
 		beans := []*bean.Bean{}
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 		// No assertion needed, just checking it doesn't panic
 	})
 
@@ -149,7 +149,7 @@ func TestSortBeans(t *testing.T) {
 		beans := []*bean.Bean{
 			{ID: "1", Status: "todo", Type: "task", Title: "A"},
 		}
-		sortBeans(beans, statusNames, typeNames)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 		if beans[0].ID != "1" {
 			t.Error("single bean should remain unchanged")
 		}

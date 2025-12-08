@@ -149,10 +149,10 @@ var listCmd = &cobra.Command{
 			}
 		}
 
-		// Column styles with widths for alignment
+		// Column styles with widths for alignment (order: ID, Type, Status, Tags, Title - matches TUI)
 		idStyle := lipgloss.NewStyle().Width(maxIDWidth)
-		statusStyle := lipgloss.NewStyle().Width(14)
 		typeStyle := lipgloss.NewStyle().Width(12)
+		statusStyle := lipgloss.NewStyle().Width(14)
 		tagsStyle := lipgloss.NewStyle().Width(24)
 		titleStyle := lipgloss.NewStyle()
 
@@ -165,20 +165,20 @@ var listCmd = &cobra.Command{
 		if hasTags {
 			header = lipgloss.JoinHorizontal(lipgloss.Top,
 				idStyle.Render(headerCol.Render("ID")),
-				statusStyle.Render(headerCol.Render("STATUS")),
 				typeStyle.Render(headerCol.Render("TYPE")),
+				statusStyle.Render(headerCol.Render("STATUS")),
 				tagsStyle.Render(headerCol.Render("TAGS")),
 				titleStyle.Render(headerCol.Render("TITLE")),
 			)
-			dividerWidth = maxIDWidth + 14 + 12 + 20 + 30
+			dividerWidth = maxIDWidth + 12 + 14 + 20 + 30
 		} else {
 			header = lipgloss.JoinHorizontal(lipgloss.Top,
 				idStyle.Render(headerCol.Render("ID")),
-				statusStyle.Render(headerCol.Render("STATUS")),
 				typeStyle.Render(headerCol.Render("TYPE")),
+				statusStyle.Render(headerCol.Render("STATUS")),
 				titleStyle.Render(headerCol.Render("TITLE")),
 			)
-			dividerWidth = maxIDWidth + 14 + 12 + 30
+			dividerWidth = maxIDWidth + 12 + 14 + 30
 		}
 		fmt.Println(header)
 		fmt.Println(ui.Muted.Render(strings.Repeat("─", dividerWidth)))
@@ -203,16 +203,16 @@ var listCmd = &cobra.Command{
 				tagsStr := ui.RenderTagsCompact(b.Tags, 1)
 				row = lipgloss.JoinHorizontal(lipgloss.Top,
 					idStyle.Render(ui.ID.Render(b.ID)),
-					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
 					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
+					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
 					tagsStyle.Render(tagsStr),
 					titleStyle.Render(truncate(b.Title, 50)),
 				)
 			} else {
 				row = lipgloss.JoinHorizontal(lipgloss.Top,
 					idStyle.Render(ui.ID.Render(b.ID)),
-					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
 					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
+					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
 					titleStyle.Render(truncate(b.Title, 50)),
 				)
 			}
@@ -272,29 +272,8 @@ func sortBeans(beans []*bean.Bean, sortBy string, cfg *config.Config) {
 			return beans[i].ID < beans[j].ID
 		})
 	default:
-		// Default: sort by archive status (not done first), then by type order
-		typeOrder := make(map[string]int)
-		for i, t := range typeNames {
-			typeOrder[t] = i
-		}
-
-		sort.Slice(beans, func(i, j int) bool {
-			// First: sort by archive status (non-archive/not-done first)
-			iArchive := cfg.IsArchiveStatus(beans[i].Status)
-			jArchive := cfg.IsArchiveStatus(beans[j].Status)
-			if iArchive != jArchive {
-				return !iArchive // non-archive (not done) comes first
-			}
-
-			// Second: sort by type order from config
-			ti, tj := typeOrder[beans[i].Type], typeOrder[beans[j].Type]
-			if ti != tj {
-				return ti < tj
-			}
-
-			// Finally: sort by ID for stable ordering
-			return beans[i].ID < beans[j].ID
-		})
+		// Default: sort by status order, then type order, then title (same as TUI)
+		bean.SortByStatusAndType(beans, statusNames, typeNames)
 	}
 }
 
@@ -611,7 +590,7 @@ func init() {
 	listCmd.Flags().StringArrayVar(&listTag, "tag", nil, "Filter by tag (can be repeated, OR logic)")
 	listCmd.Flags().StringArrayVar(&listNoTag, "no-tag", nil, "Exclude beans with tag (can be repeated)")
 	listCmd.Flags().BoolVarP(&listQuiet, "quiet", "q", false, "Only output IDs (one per line)")
-	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: created, updated, status, id (default: not-done/done, then type)")
+	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: created, updated, status, id (default: status, then type, then title)")
 	listCmd.Flags().BoolVar(&listFull, "full", false, "Include bean body in JSON output")
 	listCmd.MarkFlagsMutuallyExclusive("json", "quiet")
 	rootCmd.AddCommand(listCmd)
