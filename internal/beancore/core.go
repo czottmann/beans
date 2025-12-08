@@ -20,7 +20,6 @@ const BeansDir = ".beans"
 var (
 	ErrNotFound    = errors.New("bean not found")
 	ErrAmbiguousID = errors.New("ambiguous ID prefix matches multiple beans")
-	ErrNoBeansDir  = errors.New(".beans directory not found")
 )
 
 // KnownLinkTypes lists the recognized relationship types.
@@ -47,28 +46,6 @@ func New(root string, cfg *config.Config) *Core {
 		root:   root,
 		config: cfg,
 		beans:  make(map[string]*bean.Bean),
-	}
-}
-
-// FindRoot searches upward from the current directory for a .beans directory.
-func FindRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		beansPath := filepath.Join(dir, BeansDir)
-		if info, err := os.Stat(beansPath); err == nil && info.IsDir() {
-			return beansPath, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Reached filesystem root
-			return "", ErrNoBeansDir
-		}
-		dir = parent
 	}
 }
 

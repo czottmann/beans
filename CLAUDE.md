@@ -3,8 +3,9 @@
 This is going to be a small CLI app that interacts with a .beans/ directory that stores "issues" (like in an issue tracker) as markdown files with front matter. It is meant to be used as part of an AI-first coding workflow.
 
 - This is an agentic-first issue tracker. Issues are called beans.
-- Projects can store beans (issues) in a `.beans/` subdirectory.
-- The executable built from this project here is called `beans` and interacts with said `.beans/` directory.
+- Projects configure beans via a `.beans.yml` file at the project root.
+- Bean data is stored in a `.beans/` directory (configurable via `beans_path` in `.beans.yml`).
+- The executable built from this project here is called `beans` and interacts with said directory.
 - The `beans` command is designed to be used by a coding agent (Claude, OpenCode, etc.) to interact with the project's issues.
 - `.beans/` contains markdown files that represent individual beans (flat structure, no subdirectories).
 - The individual bean filenames start with a string-based ID (use 3-character NanoID here so things stay mergable), optionally followed by a dash and a short description

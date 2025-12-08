@@ -1,4 +1,5 @@
 beans:
+    path: .beans
     prefix: beans-
     id_length: 4
     default_status: todo

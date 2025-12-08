@@ -8,7 +8,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const ConfigFile = "config.yaml"
+const (
+	// ConfigFileName is the name of the config file at project root
+	ConfigFileName = ".beans.yml"
+	// DefaultBeansPath is the default directory for storing beans
+	DefaultBeansPath = ".beans"
+	// LegacyConfigFile is the old config file location (deprecated)
+	LegacyConfigFile = "config.yaml"
+)
 
 // DefaultStatuses defines the hardcoded status configuration.
 // Statuses are not configurable - they are hardcoded like types.
@@ -48,10 +55,16 @@ type TypeConfig struct {
 // Note: Statuses are no longer stored in config - they are hardcoded like types.
 type Config struct {
 	Beans BeansConfig `yaml:"beans"`
+
+	// configDir is the directory containing the config file (not serialized)
+	// Used to resolve relative paths
+	configDir string `yaml:"-"`
 }
 
 // BeansConfig defines settings for bean creation.
 type BeansConfig struct {
+	// Path is the path to the beans directory (relative to config file location)
+	Path          string `yaml:"path,omitempty"`
 	Prefix        string `yaml:"prefix"`
 	IDLength      int    `yaml:"id_length"`
 	DefaultStatus string `yaml:"default_status,omitempty"`
@@ -62,6 +75,7 @@ type BeansConfig struct {
 func Default() *Config {
 	return &Config{
 		Beans: BeansConfig{
+			Path:          DefaultBeansPath,
 			Prefix:        "",
 			IDLength:      4,
 			DefaultStatus: "todo",
@@ -77,12 +91,33 @@ func DefaultWithPrefix(prefix string) *Config {
 	return cfg
 }
 
-// Load reads configuration from the given .beans directory.
-// Returns default config if the file doesn't exist.
-func Load(root string) (*Config, error) {
-	path := filepath.Join(root, ConfigFile)
+// FindConfig searches upward from the given directory for a .beans.yml config file.
+// Returns the absolute path to the config file, or empty string if not found.
+func FindConfig(startDir string) (string, error) {
+	dir, err := filepath.Abs(startDir)
+	if err != nil {
+		return "", err
+	}
 
-	data, err := os.ReadFile(path)
+	for {
+		configPath := filepath.Join(dir, ConfigFileName)
+		if _, err := os.Stat(configPath); err == nil {
+			return configPath, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached filesystem root
+			return "", nil
+		}
+		dir = parent
+	}
+}
+
+// Load reads configuration from the given config file path.
+// Returns default config if the file doesn't exist.
+func Load(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Default(), nil
@@ -95,17 +130,19 @@ func Load(root string) (*Config, error) {
 		return nil, err
 	}
 
+	// Store the config directory for resolving relative paths
+	cfg.configDir = filepath.Dir(configPath)
+
 	// Apply defaults for missing values
+	if cfg.Beans.Path == "" {
+		cfg.Beans.Path = DefaultBeansPath
+	}
 	if cfg.Beans.IDLength == 0 {
 		cfg.Beans.IDLength = 4
 	}
-
-	// Apply default status if not specified
 	if cfg.Beans.DefaultStatus == "" {
 		cfg.Beans.DefaultStatus = "todo"
 	}
-
-	// Apply default type if not specified
 	if cfg.Beans.DefaultType == "" {
 		cfg.Beans.DefaultType = DefaultTypes[0].Name
 	}
@@ -113,9 +150,55 @@ func Load(root string) (*Config, error) {
 	return &cfg, nil
 }
 
-// Save writes the configuration to the given .beans directory.
-func (c *Config) Save(root string) error {
-	path := filepath.Join(root, ConfigFile)
+// LoadFromDirectory finds and loads the config file by searching upward from the given directory.
+// If no config file is found, returns a default config anchored at the given directory.
+func LoadFromDirectory(startDir string) (*Config, error) {
+	configPath, err := FindConfig(startDir)
+	if err != nil {
+		return nil, err
+	}
+
+	if configPath == "" {
+		// No config found, return default anchored at startDir
+		cfg := Default()
+		cfg.configDir = startDir
+		return cfg, nil
+	}
+
+	return Load(configPath)
+}
+
+// ResolveBeansPath returns the absolute path to the beans directory.
+func (c *Config) ResolveBeansPath() string {
+	if filepath.IsAbs(c.Beans.Path) {
+		return c.Beans.Path
+	}
+	if c.configDir == "" {
+		// Fallback: use current directory
+		cwd, _ := os.Getwd()
+		return filepath.Join(cwd, c.Beans.Path)
+	}
+	return filepath.Join(c.configDir, c.Beans.Path)
+}
+
+// ConfigDir returns the directory containing the config file.
+func (c *Config) ConfigDir() string {
+	return c.configDir
+}
+
+// SetConfigDir sets the config directory (for testing or when creating new configs).
+func (c *Config) SetConfigDir(dir string) {
+	c.configDir = dir
+}
+
+// Save writes the configuration to the config file.
+// If configDir is set, saves to that directory; otherwise saves to the given directory.
+func (c *Config) Save(dir string) error {
+	targetDir := c.configDir
+	if targetDir == "" {
+		targetDir = dir
+	}
+	path := filepath.Join(targetDir, ConfigFileName)
 
 	data, err := yaml.Marshal(c)
 	if err != nil {

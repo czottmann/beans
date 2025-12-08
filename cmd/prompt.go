@@ -3,14 +3,12 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"hmans.dev/beans/internal/beancore"
 	"hmans.dev/beans/internal/config"
 )
-
-// Note: config import is still needed for DefaultTypes and DefaultStatuses
 
 //go:embed prompt.md
 var agentPrompt string
@@ -21,11 +19,20 @@ var promptCmd = &cobra.Command{
 	Long:  `Outputs a prompt that instructs AI coding agents on how to use the beans CLI to manage project issues.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Find beans directory; silently exit if none exists
-		if beansPath == "" {
-			_, err := beancore.FindRoot()
+		// If no explicit path given, check if a beans project exists
+		if beansPath == "" && configPath == "" {
+			cwd, err := os.Getwd()
 			if err != nil {
-				// No .beans directory found - silently exit
+				return nil // Silently exit on error
+			}
+			cfg, err := config.LoadFromDirectory(cwd)
+			if err != nil {
+				return nil // Silently exit on error
+			}
+			// Check if the beans directory exists
+			beansDir := cfg.ResolveBeansPath()
+			if _, err := os.Stat(beansDir); os.IsNotExist(err) {
+				// No beans directory found - silently exit
 				return nil
 			}
 		}

@@ -15,16 +15,18 @@ var initJSON bool
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize a .beans directory",
-	Long:  `Creates a .beans directory in the current directory for storing issues.`,
+	Short: "Initialize a beans project",
+	Long:  `Creates a .beans directory and .beans.yml config file in the current directory.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var projectDir string
 		var beansDir string
 		var dirName string
 
 		if beansPath != "" {
-			// Use explicit path
+			// Use explicit path for beans directory
 			beansDir = beansPath
-			dirName = filepath.Base(filepath.Dir(beansDir))
+			projectDir = filepath.Dir(beansDir)
+			dirName = filepath.Base(projectDir)
 			// Create the directory
 			if err := os.MkdirAll(beansDir, 0755); err != nil {
 				if initJSON {
@@ -49,13 +51,16 @@ var initCmd = &cobra.Command{
 				return fmt.Errorf("failed to initialize: %w", err)
 			}
 
+			projectDir = dir
 			beansDir = filepath.Join(dir, ".beans")
 			dirName = filepath.Base(dir)
 		}
 
 		// Create default config file with directory name as prefix
+		// Config is saved at project root (not inside .beans/)
 		defaultCfg := config.DefaultWithPrefix(dirName + "-")
-		if err := defaultCfg.Save(beansDir); err != nil {
+		defaultCfg.SetConfigDir(projectDir)
+		if err := defaultCfg.Save(projectDir); err != nil {
 			if initJSON {
 				return output.Error(output.ErrFileError, err.Error())
 			}
@@ -66,7 +71,7 @@ var initCmd = &cobra.Command{
 			return output.SuccessInit(beansDir)
 		}
 
-		fmt.Println("Initialized .beans directory")
+		fmt.Println("Initialized beans project")
 		return nil
 	},
 }

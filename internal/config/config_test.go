@@ -201,11 +201,13 @@ func TestLoadAndSave(t *testing.T) {
 	// Create a config (statuses are no longer stored in config)
 	cfg := &Config{
 		Beans: BeansConfig{
+			Path:        ".beans",
 			Prefix:      "test-",
 			IDLength:    6,
 			DefaultType: "bug",
 		},
 	}
+	cfg.SetConfigDir(tmpDir)
 
 	// Save it
 	if err := cfg.Save(tmpDir); err != nil {
@@ -213,13 +215,13 @@ func TestLoadAndSave(t *testing.T) {
 	}
 
 	// Verify file exists
-	configPath := filepath.Join(tmpDir, ConfigFile)
+	configPath := filepath.Join(tmpDir, ConfigFileName)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		t.Fatal("config file was not created")
 	}
 
 	// Load it back
-	loaded, err := Load(tmpDir)
+	loaded, err := Load(configPath)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -243,7 +245,7 @@ func TestLoadAndSave(t *testing.T) {
 func TestLoadAppliesDefaults(t *testing.T) {
 	// Create temp directory with minimal config
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ConfigFile)
+	configPath := filepath.Join(tmpDir, ConfigFileName)
 
 	// Write minimal config (missing id_length and default_type)
 	minimalConfig := `beans:
@@ -254,7 +256,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	}
 
 	// Load it
-	cfg, err := Load(tmpDir)
+	cfg, err := Load(configPath)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -382,11 +384,13 @@ func TestTypesAreHardcoded(t *testing.T) {
 
 	cfg := &Config{
 		Beans: BeansConfig{
+			Path:        ".beans",
 			Prefix:      "test-",
 			IDLength:    4,
 			DefaultType: "task",
 		},
 	}
+	cfg.SetConfigDir(tmpDir)
 
 	// Save it
 	if err := cfg.Save(tmpDir); err != nil {
@@ -394,7 +398,8 @@ func TestTypesAreHardcoded(t *testing.T) {
 	}
 
 	// Load it back
-	loaded, err := Load(tmpDir)
+	configPath := filepath.Join(tmpDir, ConfigFileName)
+	loaded, err := Load(configPath)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -445,7 +450,7 @@ func TestTypeDescriptions(t *testing.T) {
 		// Even if a config file has custom types, they should be ignored
 		// and hardcoded types should be used instead
 		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, ConfigFile)
+		configPath := filepath.Join(tmpDir, ConfigFileName)
 
 		// Config with custom types (should be ignored)
 		configYAML := `beans:
@@ -464,7 +469,7 @@ types:
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
-		loaded, err := Load(tmpDir)
+		loaded, err := Load(configPath)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -509,7 +514,7 @@ func TestStatusDescriptions(t *testing.T) {
 		// Even if a config file has custom statuses, they should be ignored
 		// and hardcoded statuses should be used instead
 		tmpDir := t.TempDir()
-		configPath := filepath.Join(tmpDir, ConfigFile)
+		configPath := filepath.Join(tmpDir, ConfigFileName)
 
 		// Config with custom statuses (should be ignored)
 		configYAML := `beans:
@@ -524,7 +529,7 @@ statuses:
 			t.Fatalf("WriteFile error = %v", err)
 		}
 
-		loaded, err := Load(tmpDir)
+		loaded, err := Load(configPath)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -539,4 +544,145 @@ statuses:
 			t.Error("IsValidStatus(\"todo\") = false, want true")
 		}
 	})
+}
+
+func TestFindConfig(t *testing.T) {
+	t.Run("finds config in current directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, ConfigFileName)
+		if err := os.WriteFile(configPath, []byte("beans:\n  prefix: test-\n"), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		found, err := FindConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("FindConfig() error = %v", err)
+		}
+		if found != configPath {
+			t.Errorf("FindConfig() = %q, want %q", found, configPath)
+		}
+	})
+
+	t.Run("finds config in parent directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		subDir := filepath.Join(tmpDir, "sub", "dir")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatalf("MkdirAll error = %v", err)
+		}
+
+		configPath := filepath.Join(tmpDir, ConfigFileName)
+		if err := os.WriteFile(configPath, []byte("beans:\n  prefix: test-\n"), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		found, err := FindConfig(subDir)
+		if err != nil {
+			t.Fatalf("FindConfig() error = %v", err)
+		}
+		if found != configPath {
+			t.Errorf("FindConfig() = %q, want %q", found, configPath)
+		}
+	})
+
+	t.Run("returns empty string when no config found", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		found, err := FindConfig(tmpDir)
+		if err != nil {
+			t.Fatalf("FindConfig() error = %v", err)
+		}
+		if found != "" {
+			t.Errorf("FindConfig() = %q, want empty string", found)
+		}
+	})
+}
+
+func TestLoadFromDirectory(t *testing.T) {
+	t.Run("loads config from directory with .beans.yml", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, ConfigFileName)
+		configYAML := `beans:
+  path: custom-beans
+  prefix: test-
+  id_length: 6
+`
+		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
+			t.Fatalf("WriteFile error = %v", err)
+		}
+
+		cfg, err := LoadFromDirectory(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadFromDirectory() error = %v", err)
+		}
+		if cfg.Beans.Path != "custom-beans" {
+			t.Errorf("Beans.Path = %q, want \"custom-beans\"", cfg.Beans.Path)
+		}
+		if cfg.Beans.Prefix != "test-" {
+			t.Errorf("Prefix = %q, want \"test-\"", cfg.Beans.Prefix)
+		}
+		if cfg.Beans.IDLength != 6 {
+			t.Errorf("IDLength = %d, want 6", cfg.Beans.IDLength)
+		}
+	})
+
+	t.Run("returns default config when no config file exists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg, err := LoadFromDirectory(tmpDir)
+		if err != nil {
+			t.Fatalf("LoadFromDirectory() error = %v", err)
+		}
+		if cfg.Beans.Path != DefaultBeansPath {
+			t.Errorf("Beans.Path = %q, want %q", cfg.Beans.Path, DefaultBeansPath)
+		}
+		if cfg.ConfigDir() != tmpDir {
+			t.Errorf("ConfigDir() = %q, want %q", cfg.ConfigDir(), tmpDir)
+		}
+	})
+}
+
+func TestResolveBeansPath(t *testing.T) {
+	t.Run("resolves relative path from config directory", func(t *testing.T) {
+		cfg := &Config{
+			Beans: BeansConfig{Path: "custom-beans"},
+		}
+		cfg.SetConfigDir("/project/root")
+
+		got := cfg.ResolveBeansPath()
+		want := "/project/root/custom-beans"
+		if got != want {
+			t.Errorf("ResolveBeansPath() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("returns absolute path unchanged", func(t *testing.T) {
+		cfg := &Config{
+			Beans: BeansConfig{Path: "/absolute/path/to/beans"},
+		}
+		cfg.SetConfigDir("/project/root")
+
+		got := cfg.ResolveBeansPath()
+		want := "/absolute/path/to/beans"
+		if got != want {
+			t.Errorf("ResolveBeansPath() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("uses default .beans path", func(t *testing.T) {
+		cfg := Default()
+		cfg.SetConfigDir("/project/root")
+
+		got := cfg.ResolveBeansPath()
+		want := "/project/root/.beans"
+		if got != want {
+			t.Errorf("ResolveBeansPath() = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestDefaultHasBeansPath(t *testing.T) {
+	cfg := Default()
+	if cfg.Beans.Path != DefaultBeansPath {
+		t.Errorf("Default().Beans.Path = %q, want %q", cfg.Beans.Path, DefaultBeansPath)
+	}
 }
