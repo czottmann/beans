@@ -386,15 +386,15 @@ func filterByLinks(beans []*bean.Bean, filters []linkFilter) []*bean.Bean {
 	return filtered
 }
 
-// filterByLinkedAs filters beans by incoming relationship.
+// filterByLinkedAs filters beans by their outgoing links to a specific target.
 // Supports two formats:
-//   - "type:id" - Returns beans that the specified bean (id) has in its links[type]
-//   - "type" - Returns beans that ANY bean has in its links[type]
+//   - "type:id" - Returns beans that have a link of this type pointing to id
+//   - "type" - Returns beans that are targeted by ANY bean with this link type
 //
 // Use repeated flags for multiple values (OR logic).
 //
 // Examples:
-//   - --linked-as blocks:A returns beans that A blocks
+//   - --linked-as parent:milestone-id returns beans that have milestone-id as parent
 //   - --linked-as blocks returns all beans that are blocked by something
 //   - --linked-as blocks --linked-as parent returns beans that are blocked OR have a parent
 func filterByLinkedAs(beans []*bean.Bean, filters []linkFilter, idx *linkIndex) []*bean.Bean {
@@ -412,13 +412,9 @@ func filterByLinkedAs(beans []*bean.Bean, filters []linkFilter, idx *linkIndex) 
 					matched = true
 				}
 			} else {
-				// Type:ID: check if specific source bean has this bean in its links
-				source, exists := idx.byID[f.targetID]
-				if !exists {
-					continue // Source bean not found
-				}
-
-				if source.Links.HasLink(f.linkType, b.ID) {
+				// Type:ID: check if this bean has a link of this type pointing to the target
+				// e.g., --linked-as parent:milestone-id finds beans with parent: milestone-id
+				if b.Links.HasLink(f.linkType, f.targetID) {
 					matched = true
 				}
 			}
@@ -472,12 +468,12 @@ func excludeByLinks(beans []*bean.Bean, filters []linkFilter) []*bean.Bean {
 	return filtered
 }
 
-// excludeByLinkedAs excludes beans by incoming relationship.
+// excludeByLinkedAs excludes beans by their outgoing links to a specific target.
 // Inverse of filterByLinkedAs: returns beans that DON'T match the criteria.
 //
 // Examples:
 //   - --no-linked-as blocks returns beans not blocked by anything (actionable work)
-//   - --no-linked-as parent:epic-123 returns beans that are not children of epic-123
+//   - --no-linked-as parent:milestone-id returns beans that don't have milestone-id as parent
 func excludeByLinkedAs(beans []*bean.Bean, filters []linkFilter, idx *linkIndex) []*bean.Bean {
 	if len(filters) == 0 {
 		return beans
@@ -493,13 +489,9 @@ func excludeByLinkedAs(beans []*bean.Bean, filters []linkFilter, idx *linkIndex)
 					excluded = true
 				}
 			} else {
-				// Type:ID: exclude if specific source bean has this bean in its links
-				source, exists := idx.byID[f.targetID]
-				if !exists {
-					continue // Source bean not found, can't exclude
-				}
-
-				if source.Links.HasLink(f.linkType, b.ID) {
+				// Type:ID: exclude if this bean has a link of this type pointing to the target
+				// e.g., --no-linked-as parent:milestone-id excludes beans with parent: milestone-id
+				if b.Links.HasLink(f.linkType, f.targetID) {
 					excluded = true
 				}
 			}

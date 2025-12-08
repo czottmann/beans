@@ -385,11 +385,16 @@ func TestFilterByLinks(t *testing.T) {
 
 func TestFilterByLinkedAs(t *testing.T) {
 	// Create test beans where some beans link to others
+	// - a1 blocks b2
+	// - b2 blocks c3
+	// - child1 and child2 have epic1 as their parent
 	beans := []*bean.Bean{
 		{ID: "a1", Links: bean.Links{{Type: "blocks", Target: "b2"}}},
 		{ID: "b2", Links: bean.Links{{Type: "blocks", Target: "c3"}}},
 		{ID: "c3", Links: nil},
-		{ID: "epic1", Links: bean.Links{{Type: "parent", Target: "a1"}, {Type: "parent", Target: "b2"}}}, // epic1 is parent of a1 and b2
+		{ID: "epic1", Links: nil},
+		{ID: "child1", Links: bean.Links{{Type: "parent", Target: "epic1"}}},
+		{ID: "child2", Links: bean.Links{{Type: "parent", Target: "epic1"}}},
 	}
 
 	// Build index once for all tests
@@ -403,26 +408,26 @@ func TestFilterByLinkedAs(t *testing.T) {
 		{
 			name:    "no filter",
 			filter:  nil,
-			wantIDs: []string{"a1", "b2", "c3", "epic1"},
+			wantIDs: []string{"a1", "b2", "c3", "epic1", "child1", "child2"},
 		},
 		{
-			name:    "filter by type only - blocks (beans that are blocked)",
+			name:    "filter by type only - blocks (beans that are blocked by something)",
 			filter:  []string{"blocks"},
 			wantIDs: []string{"b2", "c3"}, // b2 is blocked by a1, c3 is blocked by b2
 		},
 		{
-			name:    "filter by type:id - blocks:a1 (beans that a1 blocks)",
-			filter:  []string{"blocks:a1"},
-			wantIDs: []string{"b2"},
+			name:    "filter by type:id - parent:epic1 (children of epic1)",
+			filter:  []string{"parent:epic1"},
+			wantIDs: []string{"child1", "child2"}, // beans with parent: epic1
 		},
 		{
-			name:    "filter by type only - parent (beans that have a parent)",
+			name:    "filter by type only - parent (beans that are targets of parent links)",
 			filter:  []string{"parent"},
-			wantIDs: []string{"a1", "b2"}, // epic1 is parent of a1 and b2
+			wantIDs: []string{"epic1"}, // epic1 is targeted by parent links
 		},
 		{
-			name:    "non-existent source bean",
-			filter:  []string{"blocks:nonexistent"},
+			name:    "non-existent target bean",
+			filter:  []string{"parent:nonexistent"},
 			wantIDs: []string{},
 		},
 	}
@@ -500,12 +505,17 @@ func TestExcludeByLinks(t *testing.T) {
 
 func TestExcludeByLinkedAs(t *testing.T) {
 	// Create test beans where some beans link to others
+	// - a1 blocks b2
+	// - b2 blocks c3
+	// - child1 and child2 have epic1 as their parent
 	beans := []*bean.Bean{
 		{ID: "a1", Links: bean.Links{{Type: "blocks", Target: "b2"}}},
 		{ID: "b2", Links: bean.Links{{Type: "blocks", Target: "c3"}}},
 		{ID: "c3", Links: nil},
 		{ID: "d4", Links: nil},
-		{ID: "epic1", Links: bean.Links{{Type: "parent", Target: "a1"}, {Type: "parent", Target: "b2"}}},
+		{ID: "epic1", Links: nil},
+		{ID: "child1", Links: bean.Links{{Type: "parent", Target: "epic1"}}},
+		{ID: "child2", Links: bean.Links{{Type: "parent", Target: "epic1"}}},
 	}
 
 	// Build index once for all tests
@@ -519,32 +529,32 @@ func TestExcludeByLinkedAs(t *testing.T) {
 		{
 			name:    "no exclusion",
 			exclude: nil,
-			wantIDs: []string{"a1", "b2", "c3", "d4", "epic1"},
+			wantIDs: []string{"a1", "b2", "c3", "d4", "epic1", "child1", "child2"},
 		},
 		{
 			name:    "exclude blocked beans (actionable work)",
 			exclude: []string{"blocks"},
-			wantIDs: []string{"a1", "d4", "epic1"}, // b2 and c3 are blocked
+			wantIDs: []string{"a1", "d4", "epic1", "child1", "child2"}, // b2 and c3 are blocked
 		},
 		{
-			name:    "exclude by type:id - blocks:a1 (exclude beans blocked by a1)",
-			exclude: []string{"blocks:a1"},
-			wantIDs: []string{"a1", "c3", "d4", "epic1"}, // only b2 is blocked by a1
+			name:    "exclude by type:id - parent:epic1 (exclude children of epic1)",
+			exclude: []string{"parent:epic1"},
+			wantIDs: []string{"a1", "b2", "c3", "d4", "epic1"}, // child1 and child2 are excluded
 		},
 		{
-			name:    "exclude beans with parent",
+			name:    "exclude beans that are parent targets",
 			exclude: []string{"parent"},
-			wantIDs: []string{"c3", "d4", "epic1"}, // a1 and b2 have epic1 as parent
+			wantIDs: []string{"a1", "b2", "c3", "d4", "child1", "child2"}, // epic1 is excluded (it's a parent target)
 		},
 		{
-			name:    "non-existent source bean",
-			exclude: []string{"blocks:nonexistent"},
-			wantIDs: []string{"a1", "b2", "c3", "d4", "epic1"}, // nothing excluded
+			name:    "non-existent target bean",
+			exclude: []string{"parent:nonexistent"},
+			wantIDs: []string{"a1", "b2", "c3", "d4", "epic1", "child1", "child2"}, // nothing excluded
 		},
 		{
 			name:    "multiple exclusions",
 			exclude: []string{"blocks", "parent"},
-			wantIDs: []string{"d4", "epic1"}, // d4 and epic1 are neither blocked nor children
+			wantIDs: []string{"a1", "d4", "child1", "child2"}, // a1, d4, child1, child2 are neither blocked nor parent targets
 		},
 	}
 
