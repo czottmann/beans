@@ -41,12 +41,12 @@ var checkCmd = &cobra.Command{
 			}
 		}
 
-		// 2b. Check default_type exists in types
-		if len(cfg.Types) > 0 && cfg.GetDefaultType() != "" && !cfg.IsValidType(cfg.GetDefaultType()) {
-			errors = append(errors, fmt.Sprintf("default_type '%s' is not a defined type", cfg.GetDefaultType()))
-		} else if len(cfg.Types) > 0 && cfg.GetDefaultType() != "" {
+		// 2b. Check default_type is a valid hardcoded type
+		if cfg.GetDefaultType() != "" && !cfg.IsValidType(cfg.GetDefaultType()) {
+			errors = append(errors, fmt.Sprintf("default_type '%s' is not a valid type", cfg.GetDefaultType()))
+		} else if cfg.GetDefaultType() != "" {
 			if !checkJSON {
-				fmt.Printf("%s Default type '%s' exists\n", ui.Success.Render("✓"), cfg.GetDefaultType())
+				fmt.Printf("%s Default type '%s' is valid\n", ui.Success.Render("✓"), cfg.GetDefaultType())
 			}
 		}
 

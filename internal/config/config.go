@@ -45,7 +45,6 @@ type TypeConfig struct {
 type Config struct {
 	Beans    BeansConfig    `yaml:"beans"`
 	Statuses []StatusConfig `yaml:"statuses"`
-	Types    []TypeConfig   `yaml:"types,omitempty"`
 }
 
 // BeansConfig defines settings for bean creation.
@@ -66,7 +65,6 @@ func Default() *Config {
 			DefaultType:   "task",
 		},
 		Statuses: DefaultStatuses,
-		Types:    DefaultTypes,
 	}
 }
 
@@ -105,19 +103,14 @@ func Load(root string) (*Config, error) {
 		cfg.Statuses = DefaultStatuses
 	}
 
-	// Apply default types if none defined
-	if len(cfg.Types) == 0 {
-		cfg.Types = DefaultTypes
-	}
-
 	// Apply default status values if not specified
 	if cfg.Beans.DefaultStatus == "" {
 		cfg.Beans.DefaultStatus = cfg.Statuses[0].Name
 	}
 
 	// Apply default type if not specified
-	if cfg.Beans.DefaultType == "" && len(cfg.Types) > 0 {
-		cfg.Beans.DefaultType = cfg.Types[0].Name
+	if cfg.Beans.DefaultType == "" {
+		cfg.Beans.DefaultType = DefaultTypes[0].Name
 	}
 
 	return &cfg, nil
@@ -192,27 +185,29 @@ func (c *Config) IsArchiveStatus(name string) bool {
 }
 
 // GetType returns the TypeConfig for a given type name, or nil if not found.
+// Types are hardcoded and not configurable.
 func (c *Config) GetType(name string) *TypeConfig {
-	for i := range c.Types {
-		if c.Types[i].Name == name {
-			return &c.Types[i]
+	for i := range DefaultTypes {
+		if DefaultTypes[i].Name == name {
+			return &DefaultTypes[i]
 		}
 	}
 	return nil
 }
 
-// TypeNames returns a slice of configured type names.
+// TypeNames returns a slice of valid type names.
+// Types are hardcoded and not configurable.
 func (c *Config) TypeNames() []string {
-	names := make([]string, len(c.Types))
-	for i, t := range c.Types {
+	names := make([]string, len(DefaultTypes))
+	for i, t := range DefaultTypes {
 		names[i] = t.Name
 	}
 	return names
 }
 
-// IsValidType returns true if the type is in the config's allowed list.
+// IsValidType returns true if the type is a valid hardcoded type.
 func (c *Config) IsValidType(typeName string) bool {
-	for _, t := range c.Types {
+	for _, t := range DefaultTypes {
 		if t.Name == typeName {
 			return true
 		}
@@ -222,8 +217,8 @@ func (c *Config) IsValidType(typeName string) bool {
 
 // TypeList returns a comma-separated list of valid types.
 func (c *Config) TypeList() string {
-	names := make([]string, len(c.Types))
-	for i, t := range c.Types {
+	names := make([]string, len(DefaultTypes))
+	for i, t := range DefaultTypes {
 		names[i] = t.Name
 	}
 	return strings.Join(names, ", ")

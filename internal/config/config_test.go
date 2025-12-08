@@ -24,8 +24,9 @@ func TestDefault(t *testing.T) {
 	if len(cfg.Statuses) != 3 {
 		t.Errorf("len(Statuses) = %d, want 3", len(cfg.Statuses))
 	}
-	if len(cfg.Types) != 5 {
-		t.Errorf("len(Types) = %d, want 5", len(cfg.Types))
+	// Types are hardcoded, not stored in config
+	if len(DefaultTypes) != 5 {
+		t.Errorf("len(DefaultTypes) = %d, want 5", len(DefaultTypes))
 	}
 }
 
@@ -331,13 +332,7 @@ func TestTypeList(t *testing.T) {
 }
 
 func TestGetType(t *testing.T) {
-	cfg := &Config{
-		Types: []TypeConfig{
-			{Name: "bug", Color: "red"},
-			{Name: "feature", Color: "green"},
-			{Name: "epic", Color: "purple"},
-		},
-	}
+	cfg := Default()
 
 	t.Run("existing type", func(t *testing.T) {
 		typ := cfg.GetType("bug")
@@ -353,31 +348,30 @@ func TestGetType(t *testing.T) {
 	})
 
 	t.Run("non-existing type", func(t *testing.T) {
-		// Backwards compatibility: GetType returns nil for unknown types
-		// but this should not cause errors - callers handle nil gracefully
-		typ := cfg.GetType("deprecated-type-no-longer-in-config")
+		// GetType returns nil for unknown types
+		typ := cfg.GetType("invalid-type")
 		if typ != nil {
-			t.Errorf("GetType(\"deprecated-type-no-longer-in-config\") = %v, want nil", typ)
+			t.Errorf("GetType(\"invalid-type\") = %v, want nil", typ)
 		}
 	})
 
-	t.Run("default types config", func(t *testing.T) {
-		defaultCfg := Default()
-		typ := defaultCfg.GetType("bug")
-		if typ == nil {
-			t.Fatal("GetType(\"bug\") on default config = nil, want non-nil")
-		}
-		if typ.Color != "red" {
-			t.Errorf("bug color = %q, want \"red\"", typ.Color)
+	t.Run("all hardcoded types exist", func(t *testing.T) {
+		expectedTypes := []string{"milestone", "epic", "bug", "feature", "task"}
+		for _, typeName := range expectedTypes {
+			typ := cfg.GetType(typeName)
+			if typ == nil {
+				t.Errorf("GetType(%q) = nil, want non-nil", typeName)
+			}
 		}
 	})
 }
 
-func TestTypesConfig(t *testing.T) {
-	// Create temp directory
+func TestTypesAreHardcoded(t *testing.T) {
+	// Types are hardcoded and not stored in config
+	// Verify that saving and loading a config doesn't affect types
+
 	tmpDir := t.TempDir()
 
-	// Create a config with types
 	cfg := &Config{
 		Beans: BeansConfig{
 			Prefix:        "test-",
@@ -385,10 +379,6 @@ func TestTypesConfig(t *testing.T) {
 			DefaultStatus: "open",
 		},
 		Statuses: DefaultStatuses,
-		Types: []TypeConfig{
-			{Name: "bug", Color: "red"},
-			{Name: "feature", Color: "blue"},
-		},
 	}
 
 	// Save it
@@ -402,17 +392,21 @@ func TestTypesConfig(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Verify types were preserved
-	if len(loaded.Types) != 2 {
-		t.Errorf("len(Types) = %d, want 2", len(loaded.Types))
+	// Types should always come from DefaultTypes, not config
+	if len(loaded.TypeNames()) != 5 {
+		t.Errorf("len(TypeNames()) = %d, want 5", len(loaded.TypeNames()))
 	}
-	if loaded.Types[0].Name != "bug" || loaded.Types[0].Color != "red" {
-		t.Errorf("Types[0] = %+v, want {Name:bug Color:red}", loaded.Types[0])
+
+	// All default types should be accessible
+	for _, typeName := range []string{"milestone", "epic", "bug", "feature", "task"} {
+		if !loaded.IsValidType(typeName) {
+			t.Errorf("IsValidType(%q) = false, want true", typeName)
+		}
 	}
 }
 
 func TestTypeDescriptions(t *testing.T) {
-	t.Run("default types have descriptions", func(t *testing.T) {
+	t.Run("hardcoded types have descriptions", func(t *testing.T) {
 		cfg := Default()
 
 		expectedDescriptions := map[string]string{
@@ -435,44 +429,13 @@ func TestTypeDescriptions(t *testing.T) {
 		}
 	})
 
-	t.Run("save and load preserves descriptions", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		cfg := &Config{
-			Beans: BeansConfig{
-				Prefix:        "test-",
-				IDLength:      4,
-				DefaultStatus: "open",
-			},
-			Statuses: DefaultStatuses,
-			Types: []TypeConfig{
-				{Name: "bug", Color: "red", Description: "Something broken"},
-				{Name: "feature", Color: "green", Description: "New functionality"},
-			},
-		}
-
-		if err := cfg.Save(tmpDir); err != nil {
-			t.Fatalf("Save() error = %v", err)
-		}
-
-		loaded, err := Load(tmpDir)
-		if err != nil {
-			t.Fatalf("Load() error = %v", err)
-		}
-
-		if loaded.Types[0].Description != "Something broken" {
-			t.Errorf("Types[0].Description = %q, want \"Something broken\"", loaded.Types[0].Description)
-		}
-		if loaded.Types[1].Description != "New functionality" {
-			t.Errorf("Types[1].Description = %q, want \"New functionality\"", loaded.Types[1].Description)
-		}
-	})
-
-	t.Run("description is optional", func(t *testing.T) {
+	t.Run("types in config file are ignored", func(t *testing.T) {
+		// Even if a config file has custom types, they should be ignored
+		// and hardcoded types should be used instead
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ConfigFile)
 
-		// Config without descriptions (backwards compatibility)
+		// Config with custom types (should be ignored)
 		configYAML := `beans:
   prefix: "test-"
   id_length: 4
@@ -481,10 +444,9 @@ statuses:
   - name: open
     color: green
 types:
-  - name: bug
-    color: red
-  - name: feature
-    color: green
+  - name: custom-type
+    color: pink
+    description: "This should be ignored"
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)
@@ -495,12 +457,14 @@ types:
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		// Should load without error, descriptions should be empty
-		if loaded.Types[0].Description != "" {
-			t.Errorf("Types[0].Description = %q, want empty", loaded.Types[0].Description)
+		// Custom type should not be valid
+		if loaded.IsValidType("custom-type") {
+			t.Error("IsValidType(\"custom-type\") = true, want false (custom types should be ignored)")
 		}
-		if loaded.Types[1].Description != "" {
-			t.Errorf("Types[1].Description = %q, want empty", loaded.Types[1].Description)
+
+		// Hardcoded types should still work
+		if !loaded.IsValidType("bug") {
+			t.Error("IsValidType(\"bug\") = false, want true")
 		}
 	})
 }
@@ -540,7 +504,6 @@ func TestStatusDescriptions(t *testing.T) {
 				{Name: "open", Color: "green", Description: "Ready to start"},
 				{Name: "done", Color: "gray", Archive: true, Description: "All finished"},
 			},
-			Types: DefaultTypes,
 		}
 
 		if err := cfg.Save(tmpDir); err != nil {
@@ -575,9 +538,6 @@ statuses:
   - name: done
     color: gray
     archive: true
-types:
-  - name: bug
-    color: red
 `
 		if err := os.WriteFile(configPath, []byte(configYAML), 0644); err != nil {
 			t.Fatalf("WriteFile error = %v", err)

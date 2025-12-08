@@ -192,11 +192,6 @@ func TestSortBeans(t *testing.T) {
 			{Name: "in-progress", Color: "yellow"},
 			{Name: "done", Color: "gray", Archive: true},
 		},
-		Types: []config.TypeConfig{
-			{Name: "task", Color: "blue"},
-			{Name: "feature", Color: "green"},
-			{Name: "bug", Color: "red"},
-		},
 	}
 
 	t.Run("sort by id", func(t *testing.T) {
@@ -285,8 +280,10 @@ func TestSortBeans(t *testing.T) {
 		}
 		sortBeans(beans, "", testCfg)
 
-		// Should be: non-archive first (sorted by type: task, feature, bug), then archive (sorted by type)
-		expected := []string{"open-task", "open-feature", "open-bug", "done-task", "done-bug"}
+		// Should be: non-archive first (sorted by type order from DefaultTypes: milestone, epic, bug, feature, task),
+		// then archive (sorted by type)
+		// DefaultTypes order: milestone, epic, bug, feature, task
+		expected := []string{"open-bug", "open-feature", "open-task", "done-bug", "done-task"}
 		for i, want := range expected {
 			if beans[i].ID != want {
 				t.Errorf("default sort[%d]: got %q, want %q", i, beans[i].ID, want)
