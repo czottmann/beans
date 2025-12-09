@@ -1,10 +1,10 @@
 ---
 title: Migrate 'init' command to use GraphQL mutations
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2025-12-09T12:04:36Z
-updated_at: 2025-12-09T12:06:08Z
+updated_at: 2025-12-09T12:26:47Z
 links:
     - blocks: beans-wp2o
     - parent: beans-7ao1
