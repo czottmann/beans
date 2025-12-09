@@ -30,19 +30,19 @@ type Bean {
   "Current status (backlog, todo, in-progress, completed, scrapped)"
   status: String!
   "Bean type (milestone, epic, bug, feature, task)"
-  type: String
+  type: String!
   "Priority level (critical, high, normal, low, deferred)"
-  priority: String
+  priority: String!
   "Tags for categorization"
-  tags: [String!]
+  tags: [String!]!
   "Creation timestamp"
-  createdAt: Time
+  createdAt: Time!
   "Last update timestamp"
-  updatedAt: Time
+  updatedAt: Time!
   "Markdown body content"
-  body: String
+  body: String!
   "Direct links to other beans"
-  links: [Link!]
+  links: [Link!]!
 
   # Computed relationship fields
   "Beans that block this one (incoming 'blocks' links)"

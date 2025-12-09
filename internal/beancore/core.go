@@ -120,6 +120,35 @@ func (c *Core) loadBean(path string) (*bean.Bean, error) {
 	filename := filepath.Base(path)
 	b.ID, b.Slug = bean.ParseFilename(filename)
 
+	// Apply defaults for GraphQL non-nullable fields
+	if b.Type == "" {
+		b.Type = "task"
+	}
+	if b.Priority == "" {
+		b.Priority = "normal"
+	}
+	if b.Tags == nil {
+		b.Tags = []string{}
+	}
+	if b.Links == nil {
+		b.Links = bean.Links{}
+	}
+	if b.CreatedAt == nil {
+		if b.UpdatedAt != nil {
+			b.CreatedAt = b.UpdatedAt
+		} else {
+			// Use file modification time as fallback
+			info, statErr := os.Stat(path)
+			if statErr == nil {
+				modTime := info.ModTime().UTC().Truncate(time.Second)
+				b.CreatedAt = &modTime
+			}
+		}
+	}
+	if b.UpdatedAt == nil {
+		b.UpdatedAt = b.CreatedAt
+	}
+
 	return b, nil
 }
 
