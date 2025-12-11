@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/hmans/beans/internal/bean"
 	"github.com/hmans/beans/internal/config"
@@ -106,7 +105,7 @@ Search Syntax (--search/-S):
 		// Sort beans
 		sortBeans(beans, listSort, cfg)
 
-		// JSON output
+		// JSON output (flat list)
 		if listJSON {
 			if !listFull {
 				for _, b := range beans {
@@ -116,7 +115,7 @@ Search Syntax (--search/-S):
 			return output.SuccessMultiple(beans)
 		}
 
-		// Quiet mode: just IDs
+		// Quiet mode: just IDs (flat)
 		if listQuiet {
 			for _, b := range beans {
 				fmt.Println(b.ID)
@@ -124,20 +123,34 @@ Search Syntax (--search/-S):
 			return nil
 		}
 
-		// Human-friendly output
-		if len(beans) == 0 {
+		// Default: tree view
+		// We need all beans to find ancestors for context
+		allBeans, err := resolver.Query().Beans(context.Background(), nil)
+		if err != nil {
+			return fmt.Errorf("querying all beans for tree: %w", err)
+		}
+
+		// Create sort function for tree building
+		sortFn := func(b []*bean.Bean) {
+			sortBeans(b, listSort, cfg)
+		}
+
+		// Build tree
+		tree := ui.BuildTree(beans, allBeans, sortFn)
+
+		if len(tree) == 0 {
 			fmt.Println(ui.Muted.Render("No beans found. Create one with: beans new <title>"))
 			return nil
 		}
 
-		// Calculate max ID width
-		maxIDWidth := 2 // minimum for "ID" header
-		for _, b := range beans {
+		// Calculate max ID width from all beans in tree
+		maxIDWidth := 2
+		for _, b := range allBeans {
 			if len(b.ID) > maxIDWidth {
 				maxIDWidth = len(b.ID)
 			}
 		}
-		maxIDWidth += 2 // padding
+		maxIDWidth += 2
 
 		// Check if any beans have tags
 		hasTags := false
@@ -148,86 +161,7 @@ Search Syntax (--search/-S):
 			}
 		}
 
-		// Column styles with widths for alignment (order: ID, Type, Status, Tags, Title - matches TUI)
-		idStyle := lipgloss.NewStyle().Width(maxIDWidth)
-		typeStyle := lipgloss.NewStyle().Width(12)
-		statusStyle := lipgloss.NewStyle().Width(14)
-		tagsStyle := lipgloss.NewStyle().Width(24)
-		titleStyle := lipgloss.NewStyle()
-
-		// Header style
-		headerCol := lipgloss.NewStyle().Foreground(ui.ColorMuted)
-
-		// Header
-		var header string
-		var dividerWidth int
-		if hasTags {
-			header = lipgloss.JoinHorizontal(lipgloss.Top,
-				idStyle.Render(headerCol.Render("ID")),
-				typeStyle.Render(headerCol.Render("TYPE")),
-				statusStyle.Render(headerCol.Render("STATUS")),
-				tagsStyle.Render(headerCol.Render("TAGS")),
-				titleStyle.Render(headerCol.Render("TITLE")),
-			)
-			dividerWidth = maxIDWidth + 12 + 14 + 20 + 30
-		} else {
-			header = lipgloss.JoinHorizontal(lipgloss.Top,
-				idStyle.Render(headerCol.Render("ID")),
-				typeStyle.Render(headerCol.Render("TYPE")),
-				statusStyle.Render(headerCol.Render("STATUS")),
-				titleStyle.Render(headerCol.Render("TITLE")),
-			)
-			dividerWidth = maxIDWidth + 12 + 14 + 30
-		}
-		fmt.Println(header)
-		fmt.Println(ui.Muted.Render(strings.Repeat("─", dividerWidth)))
-
-		for _, b := range beans {
-			// Get status color from config
-			statusCfg := cfg.GetStatus(b.Status)
-			statusColor := "gray"
-			if statusCfg != nil {
-				statusColor = statusCfg.Color
-			}
-			isArchive := cfg.IsArchiveStatus(b.Status)
-
-			// Get type color from config
-			typeColor := ""
-			if typeCfg := cfg.GetType(b.Type); typeCfg != nil {
-				typeColor = typeCfg.Color
-			}
-
-			// Get priority color and render symbol
-			priorityColor := ""
-			if priorityCfg := cfg.GetPriority(b.Priority); priorityCfg != nil {
-				priorityColor = priorityCfg.Color
-			}
-			prioritySymbol := ui.RenderPrioritySymbol(b.Priority, priorityColor)
-			if prioritySymbol != "" {
-				prioritySymbol += " "
-			}
-
-			var row string
-			if hasTags {
-				tagsStr := ui.RenderTagsCompact(b.Tags, 1)
-				row = lipgloss.JoinHorizontal(lipgloss.Top,
-					idStyle.Render(ui.ID.Render(b.ID)),
-					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
-					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
-					tagsStyle.Render(tagsStr),
-					titleStyle.Render(prioritySymbol+truncate(b.Title, 50)),
-				)
-			} else {
-				row = lipgloss.JoinHorizontal(lipgloss.Top,
-					idStyle.Render(ui.ID.Render(b.ID)),
-					typeStyle.Render(ui.RenderTypeText(b.Type, typeColor)),
-					statusStyle.Render(ui.RenderStatusTextWithColor(b.Status, statusColor, isArchive)),
-					titleStyle.Render(prioritySymbol+truncate(b.Title, 50)),
-				)
-			}
-			fmt.Println(row)
-		}
-
+		fmt.Print(ui.RenderTree(tree, cfg, maxIDWidth, hasTags))
 		return nil
 	},
 }
@@ -344,6 +278,5 @@ func init() {
 	listCmd.Flags().BoolVarP(&listQuiet, "quiet", "q", false, "Only output IDs (one per line)")
 	listCmd.Flags().StringVar(&listSort, "sort", "", "Sort by: created, updated, status, priority, id (default: status, priority, type, title)")
 	listCmd.Flags().BoolVar(&listFull, "full", false, "Include bean body in JSON output")
-	listCmd.MarkFlagsMutuallyExclusive("json", "quiet")
 	rootCmd.AddCommand(listCmd)
 }
