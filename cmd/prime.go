@@ -20,10 +20,10 @@ type promptData struct {
 	Priorities    []config.PriorityConfig
 }
 
-var promptCmd = &cobra.Command{
-	Use:   "prompt",
+var primeCmd = &cobra.Command{
+	Use:   "prime",
 	Short: "Output instructions for AI coding agents",
-	Long:  `Outputs a prompt that instructs AI coding agents on how to use the beans CLI to manage project issues.`,
+	Long:  `Outputs a prompt that primes AI coding agents on how to use the beans CLI to manage project issues.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If no explicit path given, check if a beans project exists
@@ -61,5 +61,5 @@ var promptCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(promptCmd)
+	rootCmd.AddCommand(primeCmd)
 }

@@ -64,24 +64,24 @@ Beans integrates with [Claude Code](https://claude.ai/code) via hooks. Add this 
     "SessionStart": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "beans prompt" }]
+        "hooks": [{ "type": "command", "command": "beans prime" }]
       }
     ],
     "PreCompact": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "beans prompt" }]
+        "hooks": [{ "type": "command", "command": "beans prime" }]
       }
     ]
   }
 }
 ```
 
-This runs `beans prompt` at session start and before context compaction, injecting instructions that teach Claude to use Beans for task tracking instead of its built-in TodoWrite tool.
+This runs `beans prime` at session start and before context compaction, injecting instructions that teach Claude to use Beans for task tracking instead of its built-in TodoWrite tool.
 
 ### Other Agents
 
-You can use Beans with other coding agents by configuring them to run `beans prompt` to get the prompt instructions for task management. We'll add specific integrations for popular agents over time.
+You can use Beans with other coding agents by configuring them to run `beans prime` to get the prompt instructions for task management. We'll add specific integrations for popular agents over time.
 
 ## Usage
 
