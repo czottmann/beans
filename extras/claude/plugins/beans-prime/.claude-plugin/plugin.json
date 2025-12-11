@@ -5,8 +5,5 @@
   "author": {
     "name": "Hendrik Mans",
     "email": "hendrik@mans.de"
-  },
-  "repository": "https://github.com/hmans/beans",
-  "license": "Apache-2.0",
-  "keywords": ["beans", "issue-tracker", "agentic"]
+  }
 }
