@@ -19,6 +19,7 @@ const (
 	viewTagPicker
 	viewParentPicker
 	viewStatusPicker
+	viewTypePicker
 )
 
 // beansChangedMsg is sent when beans change on disk (via file watcher)
@@ -50,6 +51,7 @@ type App struct {
 	tagPicker    tagPickerModel
 	parentPicker parentPickerModel
 	statusPicker statusPickerModel
+	typePicker   typePickerModel
 	history      []detailModel // stack of previous detail views for back navigation
 	core         *beancore.Core
 	resolver     *graph.Resolver
@@ -121,7 +123,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return a, tea.Quit
 		case "q":
-			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker {
+			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker || a.state == viewTypePicker {
 				return a, tea.Quit
 			}
 			// For list, only quit if not filtering
@@ -208,6 +210,35 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, a.list.loadBeans
 
+	case openTypePickerMsg:
+		a.previousState = a.state
+		a.typePicker = newTypePickerModel(msg.beanID, msg.currentType, a.config, a.width, a.height)
+		a.state = viewTypePicker
+		return a, a.typePicker.Init()
+
+	case closeTypePickerMsg:
+		a.state = a.previousState
+		return a, nil
+
+	case typeSelectedMsg:
+		// Update the bean's type via GraphQL mutation
+		_, err := a.resolver.Mutation().UpdateBean(context.Background(), msg.beanID, model.UpdateBeanInput{
+			Type: &msg.beanType,
+		})
+		if err != nil {
+			a.state = a.previousState
+			return a, nil
+		}
+		// Return to the previous view and refresh
+		a.state = a.previousState
+		if a.state == viewDetail {
+			updatedBean, _ := a.resolver.Query().Bean(context.Background(), msg.beanID)
+			if updatedBean != nil {
+				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+			}
+		}
+		return a, a.list.loadBeans
+
 	case parentSelectedMsg:
 		// Set the new parent via GraphQL mutation
 		var parentID *string
@@ -271,6 +302,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.parentPicker, cmd = a.parentPicker.Update(msg)
 	case viewStatusPicker:
 		a.statusPicker, cmd = a.statusPicker.Update(msg)
+	case viewTypePicker:
+		a.typePicker, cmd = a.typePicker.Update(msg)
 	}
 
 	return a, cmd
@@ -307,6 +340,8 @@ func (a *App) View() string {
 		return a.parentPicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewStatusPicker:
 		return a.statusPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+	case viewTypePicker:
+		return a.typePicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	}
 	return ""
 }

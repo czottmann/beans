@@ -278,6 +278,16 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						}
 					}
 				}
+			case "t":
+				// Open type picker for selected bean
+				if item, ok := m.list.SelectedItem().(beanItem); ok {
+					return m, func() tea.Msg {
+						return openTypePickerMsg{
+							beanID:      item.bean.ID,
+							currentType: item.bean.Type,
+						}
+					}
+				}
 			case "esc", "backspace":
 				// If we have an active filter, clear it instead of quitting
 				if m.hasActiveFilter() {
@@ -336,12 +346,14 @@ func (m listModel) View() string {
 	if m.hasActiveFilter() {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
+			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("esc") + " " + helpStyle.Render("clear filter") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
 	} else {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
+			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("/") + " " + helpStyle.Render("filter") + "  " +
 			helpKeyStyle.Render("g t") + " " + helpStyle.Render("filter by tag") + "  " +

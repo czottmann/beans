@@ -333,6 +333,15 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 					currentStatus: m.bean.Status,
 				}
 			}
+
+		case "t":
+			// Open type picker
+			return m, func() tea.Msg {
+				return openTypePickerMsg{
+					beanID:      m.bean.ID,
+					currentType: m.bean.Type,
+				}
+			}
 		}
 	}
 
@@ -402,6 +411,7 @@ func (m detailModel) View() string {
 		footer += helpKeyStyle.Render("enter") + " " + helpStyle.Render("go to") + "  "
 	}
 	footer += helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
+		helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
 		helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 		helpKeyStyle.Render("j/k") + " " + helpStyle.Render("scroll") + "  " +
 		helpKeyStyle.Render("esc") + " " + helpStyle.Render("back") + "  " +
