@@ -1,9 +1,10 @@
 ---
-title: "TUI: Change bean parent"
-status: backlog
+title: 'TUI: Change bean parent'
+status: completed
 type: feature
+priority: normal
 created_at: 2025-12-12T22:23:04Z
-updated_at: 2025-12-12T22:23:04Z
+updated_at: 2025-12-12T22:41:33Z
 parent: beans-xnp8
 ---
 

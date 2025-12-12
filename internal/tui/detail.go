@@ -314,6 +314,16 @@ func (m detailModel) Update(msg tea.Msg) (detailModel, tea.Cmd) {
 					}
 				}
 			}
+
+		case "p":
+			// Open parent picker
+			return m, func() tea.Msg {
+				return openParentPickerMsg{
+					beanID:        m.bean.ID,
+					beanType:      m.bean.Type,
+					currentParent: m.bean.Parent,
+				}
+			}
 		}
 	}
 
@@ -382,7 +392,8 @@ func (m detailModel) View() string {
 		}
 		footer += helpKeyStyle.Render("enter") + " " + helpStyle.Render("go to") + "  "
 	}
-	footer += helpKeyStyle.Render("j/k") + " " + helpStyle.Render("scroll") + "  " +
+	footer += helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
+		helpKeyStyle.Render("j/k") + " " + helpStyle.Render("scroll") + "  " +
 		helpKeyStyle.Render("esc") + " " + helpStyle.Render("back") + "  " +
 		helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
 

@@ -16,6 +16,7 @@ const (
 	viewList viewState = iota
 	viewDetail
 	viewTagPicker
+	viewParentPicker
 )
 
 // beansChangedMsg is sent when beans change on disk (via file watcher)
@@ -32,22 +33,33 @@ type tagSelectedMsg struct {
 // clearFilterMsg is sent to clear any active filter
 type clearFilterMsg struct{}
 
+// openParentPickerMsg requests opening the parent picker for a bean
+type openParentPickerMsg struct {
+	beanID        string
+	beanType      string
+	currentParent string
+}
+
 // App is the main TUI application model
 type App struct {
-	state     viewState
-	list      listModel
-	detail    detailModel
-	tagPicker tagPickerModel
-	history   []detailModel // stack of previous detail views for back navigation
-	core      *beancore.Core
-	resolver  *graph.Resolver
-	config    *config.Config
-	width     int
-	height    int
-	program   *tea.Program // reference to program for sending messages from watcher
+	state        viewState
+	list         listModel
+	detail       detailModel
+	tagPicker    tagPickerModel
+	parentPicker parentPickerModel
+	history      []detailModel // stack of previous detail views for back navigation
+	core         *beancore.Core
+	resolver     *graph.Resolver
+	config       *config.Config
+	width        int
+	height       int
+	program      *tea.Program // reference to program for sending messages from watcher
 
 	// Key chord state - tracks partial key sequences like "g" waiting for "t"
 	pendingKey string
+
+	// Modal state - tracks view behind parent picker modal
+	previousState viewState
 }
 
 // New creates a new TUI application
@@ -106,7 +118,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return a, tea.Quit
 		case "q":
-			if a.state == viewDetail || a.state == viewTagPicker {
+			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker {
 				return a, tea.Quit
 			}
 			// For list, only quit if not filtering
@@ -148,6 +160,45 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.list.setTagFilter(msg.tag)
 		return a, a.list.loadBeans
 
+	case openParentPickerMsg:
+		// Check if this bean type can have parents
+		if beancore.ValidParentTypes(msg.beanType) == nil {
+			// Milestones cannot have parents - don't open the picker
+			return a, nil
+		}
+		a.previousState = a.state // Remember where we came from for the modal background
+		a.parentPicker = newParentPickerModel(msg.beanID, msg.beanType, msg.currentParent, a.resolver, a.config, a.width, a.height)
+		a.state = viewParentPicker
+		return a, a.parentPicker.Init()
+
+	case closeParentPickerMsg:
+		// Return to previous view without making changes
+		a.state = a.previousState
+		return a, nil
+
+	case parentSelectedMsg:
+		// Set the new parent via GraphQL mutation
+		var parentID *string
+		if msg.parentID != "" {
+			parentID = &msg.parentID
+		}
+		_, err := a.resolver.Mutation().SetParent(context.Background(), msg.beanID, parentID)
+		if err != nil {
+			// TODO: Show error to user
+			a.state = a.previousState
+			return a, nil
+		}
+		// Return to the previous view and refresh
+		a.state = a.previousState
+		if a.state == viewDetail {
+			// Refresh the bean to show updated parent
+			updatedBean, _ := a.resolver.Query().Bean(context.Background(), msg.beanID)
+			if updatedBean != nil {
+				a.detail = newDetailModel(updatedBean, a.resolver, a.config, a.width, a.height)
+			}
+		}
+		return a, a.list.loadBeans
+
 	case clearFilterMsg:
 		a.list.clearFilter()
 		return a, a.list.loadBeans
@@ -184,6 +235,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.detail, cmd = a.detail.Update(msg)
 	case viewTagPicker:
 		a.tagPicker, cmd = a.tagPicker.Update(msg)
+	case viewParentPicker:
+		a.parentPicker, cmd = a.parentPicker.Update(msg)
 	}
 
 	return a, cmd
@@ -216,6 +269,18 @@ func (a *App) View() string {
 		return a.detail.View()
 	case viewTagPicker:
 		return a.tagPicker.View()
+	case viewParentPicker:
+		// Render parent picker as a modal overlay on top of the previous view
+		var bgView string
+		switch a.previousState {
+		case viewList:
+			bgView = a.list.View()
+		case viewDetail:
+			bgView = a.detail.View()
+		default:
+			bgView = a.list.View()
+		}
+		return a.parentPicker.ModalView(bgView, a.width, a.height)
 	}
 	return ""
 }

@@ -257,6 +257,17 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						return selectBeanMsg{bean: item.bean}
 					}
 				}
+			case "p":
+				// Open parent picker for selected bean
+				if item, ok := m.list.SelectedItem().(beanItem); ok {
+					return m, func() tea.Msg {
+						return openParentPickerMsg{
+							beanID:        item.bean.ID,
+							beanType:      item.bean.Type,
+							currentParent: item.bean.Parent,
+						}
+					}
+				}
 			case "esc", "backspace":
 				// If we have an active filter, clear it instead of quitting
 				if m.hasActiveFilter() {
@@ -314,10 +325,12 @@ func (m listModel) View() string {
 	var help string
 	if m.hasActiveFilter() {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
+			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("esc") + " " + helpStyle.Render("clear filter") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
 	} else {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
+			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
 			helpKeyStyle.Render("/") + " " + helpStyle.Render("filter") + "  " +
 			helpKeyStyle.Render("g t") + " " + helpStyle.Render("filter by tag") + "  " +
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
