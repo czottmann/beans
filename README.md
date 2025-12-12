@@ -16,6 +16,14 @@ You've been programming all your life; now you get to be a product manager. Let'
 
 https://github.com/user-attachments/assets/dbe45408-d3ed-4681-a436-a5e3046163da
 
+## Stability Warning ⚠️
+
+Beans is still under heavy development, and its features and APIs may still change significantly. If you decide to use it now, please follow the release notes closely.
+
+Since Beans emits its own prompt instructions for your coding agent, most changes will "just work"; but sometimes, we modify the schema of the underlying data files, which may require some manual migration steps. If you get caught by one of these changes, your agent will often be able to migrate your data for you:
+
+> "The Beans data format has changed. Please migrate this project's beans to the new format."
+
 ## Features
 
 - **Track tasks, bugs, features**, and more right alongside your code.
