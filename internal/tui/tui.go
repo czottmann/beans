@@ -374,18 +374,25 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case beanCreatedMsg:
-		// Create the bean via GraphQL mutation
-		_, err := a.resolver.Mutation().CreateBean(context.Background(), model.CreateBeanInput{
-			Title: msg.title,
+		// Create the bean via GraphQL mutation with draft status
+		draftStatus := "draft"
+		createdBean, err := a.resolver.Mutation().CreateBean(context.Background(), model.CreateBeanInput{
+			Title:  msg.title,
+			Status: &draftStatus,
 		})
 		if err != nil {
 			// TODO: Show error to user
 			a.state = a.previousState
 			return a, nil
 		}
-		// Return to list and refresh
+		// Return to list and open the new bean in editor
 		a.state = viewList
-		return a, a.list.loadBeans
+		return a, tea.Batch(
+			a.list.loadBeans,
+			func() tea.Msg {
+				return openEditorMsg{beanID: createdBean.ID, beanPath: createdBean.Path}
+			},
+		)
 
 	case openEditorMsg:
 		// Launch editor for the bean file
