@@ -151,9 +151,9 @@ func buildNodes(beans []*bean.Bean, children map[string][]*bean.Bean, matchedSet
 const (
 	treeBranch     = "├─ "
 	treeLastBranch = "└─ "
-	treePipe       = ""  // no continuation lines
-	treeSpace      = ""  // no spacing for completed branches
-	treeIndent     = 3   // width of connector (├─  or └─ )
+	treePipe       = "│  " // vertical line for ongoing branches
+	treeSpace      = "   " // empty space for completed branches
+	treeIndent     = 3     // width of connector
 )
 
 // calculateMaxDepth returns the maximum depth of the tree.
@@ -217,26 +217,35 @@ func RenderTree(nodes []*TreeNode, cfg *config.Config, maxIDWidth int, hasTags b
 	sb.WriteString(Muted.Render(strings.Repeat("─", dividerWidth)))
 	sb.WriteString("\n")
 
-	// Render nodes (depth 0 = root level)
-	renderNodes(&sb, nodes, 0, cfg, treeColWidth, hasTags)
+	// Render nodes (depth 0 = root level, no ancestry yet)
+	renderNodes(&sb, nodes, 0, nil, cfg, treeColWidth, hasTags)
 
 	return sb.String()
 }
 
 // renderNodes recursively renders tree nodes with proper indentation.
 // depth 0 = root level (no connector), depth 1+ = nested (has connector)
-func renderNodes(sb *strings.Builder, nodes []*TreeNode, depth int, cfg *config.Config, treeColWidth int, hasTags bool) {
+// ancestry tracks whether each parent level was a last child (true = last, no continuation line needed)
+func renderNodes(sb *strings.Builder, nodes []*TreeNode, depth int, ancestry []bool, cfg *config.Config, treeColWidth int, hasTags bool) {
 	for i, node := range nodes {
 		isLast := i == len(nodes)-1
-		renderNode(sb, node, depth, isLast, cfg, treeColWidth, hasTags)
-		renderNodes(sb, node.Children, depth+1, cfg, treeColWidth, hasTags)
+		renderNode(sb, node, depth, isLast, ancestry, cfg, treeColWidth, hasTags)
+		// Only add to ancestry when depth > 0 (roots have no connectors to continue)
+		if len(node.Children) > 0 {
+			var newAncestry []bool
+			if depth > 0 {
+				newAncestry = append(ancestry, isLast)
+			}
+			renderNodes(sb, node.Children, depth+1, newAncestry, cfg, treeColWidth, hasTags)
+		}
 	}
 }
 
 // renderNode renders a single tree node with tree connectors.
 // treeColWidth is the fixed width of the ID column (includes space for tree connectors).
 // depth 0 = root (no connector), depth 1+ = nested (has connector)
-func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, cfg *config.Config, treeColWidth int, hasTags bool) {
+// ancestry tracks whether each parent level was a last child (true = last, no continuation line needed)
+func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, ancestry []bool, cfg *config.Config, treeColWidth int, hasTags bool) {
 	b := node.Bean
 
 	// Get status color from config
@@ -275,9 +284,13 @@ func renderNode(sb *strings.Builder, node *TreeNode, depth int, isLast bool, cfg
 	var indent string
 	var connector string
 	if depth > 0 {
-		// Add indentation for depth > 1 (3 spaces per level beyond first)
-		if depth > 1 {
-			indent = strings.Repeat("   ", depth-1)
+		// Build indent from ancestry - each level adds either │ or space
+		for _, wasLast := range ancestry {
+			if wasLast {
+				indent += treeSpace // parent was last child, no continuation line
+			} else {
+				indent += treePipe // parent has more siblings, show continuation line
+			}
 		}
 		if isLast {
 			connector = treeLastBranch
@@ -399,22 +412,28 @@ type FlatItem struct {
 // Each item includes the pre-computed tree prefix for rendering.
 func FlattenTree(nodes []*TreeNode) []FlatItem {
 	var items []FlatItem
-	flattenNodes(nodes, 0, &items)
+	flattenNodes(nodes, 0, nil, &items)
 	return items
 }
 
-func flattenNodes(nodes []*TreeNode, depth int, items *[]FlatItem) {
+// flattenNodes recursively flattens tree nodes.
+// ancestry tracks whether each parent level was a last child (true = last, no continuation line needed)
+func flattenNodes(nodes []*TreeNode, depth int, ancestry []bool, items *[]FlatItem) {
 	for i, node := range nodes {
 		isLast := i == len(nodes)-1
 
 		// Compute tree prefix
 		var prefix string
 		if depth > 0 {
-			// Add indentation for depth > 1 (3 spaces per level beyond first)
-			if depth > 1 {
-				prefix = strings.Repeat("   ", depth-1)
+			// Build prefix from ancestry - each level adds either │ or space
+			for _, wasLast := range ancestry {
+				if wasLast {
+					prefix += treeSpace // parent was last child, no continuation line
+				} else {
+					prefix += treePipe // parent has more siblings, show continuation line
+				}
 			}
-			// Add connector
+			// Add connector for this node
 			if isLast {
 				prefix += treeLastBranch
 			} else {
@@ -430,8 +449,15 @@ func flattenNodes(nodes []*TreeNode, depth int, items *[]FlatItem) {
 			TreePrefix: prefix,
 		})
 
-		// Recurse into children
-		flattenNodes(node.Children, depth+1, items)
+		// Recurse into children, passing updated ancestry
+		// Only add to ancestry when depth > 0 (roots have no connectors to continue)
+		if len(node.Children) > 0 {
+			var newAncestry []bool
+			if depth > 0 {
+				newAncestry = append(ancestry, isLast)
+			}
+			flattenNodes(node.Children, depth+1, newAncestry, items)
+		}
 	}
 }
 

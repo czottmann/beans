@@ -130,7 +130,7 @@ func newListModel(resolver *graph.Resolver, cfg *config.Config) listModel {
 	l.SetFilteringEnabled(true)
 	l.SetShowHelp(false)
 	l.Styles.Title = listTitleStyle
-	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 2)
+	l.Styles.TitleBar = lipgloss.NewStyle().Padding(0, 0, 1, 1)
 	l.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
 	l.Styles.FilterCursor = lipgloss.NewStyle().Foreground(ui.ColorPrimary)
 
@@ -198,7 +198,7 @@ func (m listModel) loadBeans() tea.Msg {
 		}
 	}
 	maxDepth := ui.MaxTreeDepth(items)
-	// ID column = base ID width + tree indent (2 chars per depth level for depth > 0)
+	// ID column = base ID width + tree indent (3 chars per depth level)
 	idColWidth := maxIDLen + 2 // base padding
 	if maxDepth > 0 {
 		idColWidth += maxDepth * 3 // 3 chars per depth level (├─ + space)

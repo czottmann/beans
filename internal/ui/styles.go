@@ -409,7 +409,6 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 	if cfg.IDColWidth > 0 {
 		idColWidth = cfg.IDColWidth
 	}
-	idStyle := lipgloss.NewStyle().Width(idColWidth)
 	typeStyle := lipgloss.NewStyle().Width(ColWidthType)
 	statusStyle := lipgloss.NewStyle().Width(ColWidthStatus)
 
@@ -427,15 +426,22 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 	// Highlight style for marked rows
 	highlightStyle := lipgloss.NewStyle().Foreground(ColorWarning)
 
-	// Build columns - apply dimming or highlight as needed
+	// Build ID column with manual padding
+	// (lipgloss Width() doesn't correctly handle Unicode box-drawing characters)
 	var idCol string
+	// Calculate visual width: tree prefix (in runes) + ID length
+	visualWidth := len([]rune(cfg.TreePrefix)) + len(id)
+	padding := ""
+	if idColWidth > visualWidth {
+		padding = strings.Repeat(" ", idColWidth-visualWidth)
+	}
 	if cfg.Dimmed {
-		idCol = idStyle.Render(Muted.Render(cfg.TreePrefix) + Muted.Render(id))
+		idCol = Muted.Render(cfg.TreePrefix) + Muted.Render(id) + padding
 	} else if cfg.IsMarked {
 		// Only highlight the ID when marked
-		idCol = idStyle.Render(highlightStyle.Render(cfg.TreePrefix) + highlightStyle.Render(id))
+		idCol = highlightStyle.Render(cfg.TreePrefix) + highlightStyle.Render(id) + padding
 	} else {
-		idCol = idStyle.Render(TreeLine.Render(cfg.TreePrefix) + ID.Render(id))
+		idCol = TreeLine.Render(cfg.TreePrefix) + ID.Render(id) + padding
 	}
 
 	var typeCol string
