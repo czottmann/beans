@@ -547,7 +547,7 @@ func (a *App) getBackgroundView() string {
 }
 
 // getEditor returns the user's preferred editor using the fallback chain:
-// $VISUAL -> $EDITOR -> nano -> vi
+// $VISUAL -> $EDITOR -> vi -> nano
 func getEditor() string {
 	if editor := os.Getenv("VISUAL"); editor != "" {
 		return editor
@@ -555,11 +555,11 @@ func getEditor() string {
 	if editor := os.Getenv("EDITOR"); editor != "" {
 		return editor
 	}
-	// Fallback chain: nano is more user-friendly, vi is more universal
-	if _, err := exec.LookPath("nano"); err == nil {
-		return "nano"
+	// Fallback chain: vi is more universal, nano as last resort
+	if _, err := exec.LookPath("vi"); err == nil {
+		return "vi"
 	}
-	return "vi"
+	return "nano"
 }
 
 // Run starts the TUI application with file watching
