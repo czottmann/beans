@@ -4,11 +4,11 @@ You already know what beans is. This is the beans repository.
 
 # Work Parallelization
 
-We're aiming to parallelize multiple agents. To this end, please follow these rules:
+ABSOLUTELY CRITICAL: We're aiming to parallelize multiple agents. To this end, please follow these rules:
 
-- Create a git worktree for each agent working on a bean. This way, each agent has its own isolated working directory.
-- Mark the bean as "in-progress" in the main worktree when an agent starts working on it. This prevents multiple agents from working on the same bean simultaneously.
-- Once the agent completes the bean, mark it as "completed" in the main worktree.
+1. YOU MUST create a git worktree for each agent working on a bean. This way, each agent has its own isolated working directory. Do this inside the `.worktrees/` directory.
+2. YOU MUST mark the bean as "in-progress" in the main worktree when an agent starts working on it. This prevents multiple agents from working on the same bean simultaneously.
+3. Once the agent completes the bean, YOU MUST mark it as "completed" in the main worktree.
 
 # Commits
 
