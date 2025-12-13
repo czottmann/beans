@@ -302,6 +302,11 @@ func (m listModel) Update(msg tea.Msg) (listModel, tea.Cmd) {
 						}
 					}
 				}
+			case "c":
+				// Open create modal
+				return m, func() tea.Msg {
+					return openCreateModalMsg{}
+				}
 			case "esc", "backspace":
 				// If we have an active filter, clear it instead of quitting
 				if m.hasActiveFilter() {
@@ -359,6 +364,7 @@ func (m listModel) View() string {
 	var help string
 	if m.hasActiveFilter() {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
+			helpKeyStyle.Render("c") + " " + helpStyle.Render("create") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +
@@ -367,6 +373,7 @@ func (m listModel) View() string {
 			helpKeyStyle.Render("q") + " " + helpStyle.Render("quit")
 	} else {
 		help = helpKeyStyle.Render("enter") + " " + helpStyle.Render("view") + "  " +
+			helpKeyStyle.Render("c") + " " + helpStyle.Render("create") + "  " +
 			helpKeyStyle.Render("s") + " " + helpStyle.Render("status") + "  " +
 			helpKeyStyle.Render("t") + " " + helpStyle.Render("type") + "  " +
 			helpKeyStyle.Render("p") + " " + helpStyle.Render("parent") + "  " +

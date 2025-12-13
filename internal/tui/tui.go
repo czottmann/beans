@@ -21,6 +21,7 @@ const (
 	viewStatusPicker
 	viewTypePicker
 	viewBlockingPicker
+	viewCreateModal
 )
 
 // beansChangedMsg is sent when beans change on disk (via file watcher)
@@ -55,6 +56,7 @@ type App struct {
 	statusPicker   statusPickerModel
 	typePicker     typePickerModel
 	blockingPicker blockingPickerModel
+	createModal    createModalModel
 	history        []detailModel // stack of previous detail views for back navigation
 	core           *beancore.Core
 	resolver       *graph.Resolver
@@ -126,7 +128,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return a, tea.Quit
 		case "q":
-			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker || a.state == viewTypePicker || a.state == viewBlockingPicker {
+			if a.state == viewDetail || a.state == viewTagPicker || a.state == viewParentPicker || a.state == viewStatusPicker || a.state == viewTypePicker || a.state == viewBlockingPicker || a.state == viewCreateModal {
 				return a, tea.Quit
 			}
 			// For list, only quit if not filtering
@@ -281,6 +283,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, a.list.loadBeans
 
+	case openCreateModalMsg:
+		a.previousState = a.state
+		a.createModal = newCreateModalModel(a.width, a.height)
+		a.state = viewCreateModal
+		return a, a.createModal.Init()
+
+	case closeCreateModalMsg:
+		a.state = a.previousState
+		return a, nil
+
+	case beanCreatedMsg:
+		// Create the bean via GraphQL mutation
+		_, err := a.resolver.Mutation().CreateBean(context.Background(), model.CreateBeanInput{
+			Title: msg.title,
+		})
+		if err != nil {
+			// TODO: Show error to user
+			a.state = a.previousState
+			return a, nil
+		}
+		// Return to list and refresh
+		a.state = viewList
+		return a, a.list.loadBeans
+
 	case parentSelectedMsg:
 		// Set the new parent via GraphQL mutation
 		var parentID *string
@@ -348,6 +374,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.typePicker, cmd = a.typePicker.Update(msg)
 	case viewBlockingPicker:
 		a.blockingPicker, cmd = a.blockingPicker.Update(msg)
+	case viewCreateModal:
+		a.createModal, cmd = a.createModal.Update(msg)
 	}
 
 	return a, cmd
@@ -388,6 +416,8 @@ func (a *App) View() string {
 		return a.typePicker.ModalView(a.getBackgroundView(), a.width, a.height)
 	case viewBlockingPicker:
 		return a.blockingPicker.ModalView(a.getBackgroundView(), a.width, a.height)
+	case viewCreateModal:
+		return a.createModal.ModalView(a.getBackgroundView(), a.width, a.height)
 	}
 	return ""
 }

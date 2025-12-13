@@ -1,10 +1,10 @@
 ---
 title: 'TUI: ''c'' shortcut to create a new bean'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2025-12-12T22:38:27Z
-updated_at: 2025-12-12T23:04:45Z
+updated_at: 2025-12-13T00:28:58Z
 parent: beans-xnp8
 ---
 
