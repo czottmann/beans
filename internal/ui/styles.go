@@ -348,9 +348,8 @@ type ResponsiveColumns struct {
 }
 
 // CalculateResponsiveColumns determines column widths based on available width.
-// It distributes extra space to tags (more tags) and title (remaining space).
+// Prioritizes title width - tags are only shown when there's plenty of room.
 func CalculateResponsiveColumns(totalWidth int, hasTags bool) ResponsiveColumns {
-	// Fixed columns
 	cols := ResponsiveColumns{
 		ID:       ColWidthID,
 		Status:   ColWidthStatus,
@@ -360,24 +359,26 @@ func CalculateResponsiveColumns(totalWidth int, hasTags bool) ResponsiveColumns 
 		ShowTags: false,
 	}
 
-	// Cursor takes 2 chars
+	// Don't show tags in narrow viewports - prioritize title space
+	// Only consider showing tags if terminal is wide enough (140+ columns)
+	const minWidthForTags = 140
+
+	if !hasTags || totalWidth < minWidthForTags {
+		return cols
+	}
+
+	// At this point we have at least 140 columns
+	// Base usage: cursor (2) + ID (12) + status (14) + type (12) = 40
 	cursorWidth := 2
-
-	// Base width without tags
 	baseWidth := cursorWidth + cols.ID + cols.Status + cols.Type
-
-	// Minimum title width we want to preserve
-	minTitleWidth := 30
-
-	// Available space for tags + title
 	available := totalWidth - baseWidth
 
-	// Only show tags if we have them and there's enough room
-	if hasTags && available > minTitleWidth+ColWidthTags {
-		cols.ShowTags = true
+	// Reserve generous space for title, then allocate remaining to tags
+	minTitleWidth := 50
+	spaceForTags := available - minTitleWidth
 
-		// Calculate how many tags we can show based on available space
-		spaceForTags := available - minTitleWidth
+	if spaceForTags >= ColWidthTags {
+		cols.ShowTags = true
 
 		if spaceForTags >= 80 {
 			// Lots of space: show all tags (up to 5)
@@ -490,6 +491,7 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 
 	// Title (truncate if needed, accounting for priority symbol width)
 	displayTitle := title
+	titleColWidth := cfg.MaxTitleWidth // Save original for padding
 	maxWidth := cfg.MaxTitleWidth
 	if maxWidth > 0 && prioritySymbol != "" {
 		maxWidth -= 2 // Account for symbol + space
@@ -525,7 +527,17 @@ func RenderBeanRow(id, status, typeName, title string, cfg BeanRowConfig) string
 	}
 
 	if cfg.ShowTags {
-		return cursor + idCol + typeCol + statusCol + prioritySymbol + titleStyled + " " + tagsCol
+		// Pad title column to fixed width so tags align in a column
+		// Calculate padding needed: titleColWidth - (priority symbol width + title length)
+		titleLen := len(displayTitle)
+		if prioritySymbol != "" {
+			titleLen += 2 // symbol + space
+		}
+		padding := ""
+		if titleColWidth > titleLen {
+			padding = strings.Repeat(" ", titleColWidth-titleLen)
+		}
+		return cursor + idCol + typeCol + statusCol + prioritySymbol + titleStyled + padding + " " + tagsCol
 	}
 	return cursor + idCol + typeCol + statusCol + prioritySymbol + titleStyled
 }
