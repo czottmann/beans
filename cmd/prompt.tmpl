@@ -24,6 +24,10 @@ If you identify something that should be changed or fixed after completing the u
 - **CLI commands are simpler for common operations** - `beans create` and `beans update` are easier for single mutations
 - After compaction or clear, run `beans prime` to re-sync
 - Lean towards using sub-agents for interacting with beans
+- **Query for milestones** to understand project priorities. Check for in-progress milestones (current focus) and todo/draft milestones (upcoming work) to align your decisions with project goals:
+  ```bash
+  beans query '{ beans(filter: { type: ["milestone"], status: ["in-progress", "todo", "draft"] }) { id title status body } }'
+  ```
 
 ## Finding work
 

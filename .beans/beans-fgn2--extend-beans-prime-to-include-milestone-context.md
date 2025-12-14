@@ -1,11 +1,11 @@
 ---
 # beans-fgn2
 title: Extend beans prime to include milestone context
-status: todo
+status: scrapped
 type: feature
 priority: normal
 created_at: 2025-12-14T11:37:59Z
-updated_at: 2025-12-14T15:05:05Z
+updated_at: 2025-12-14T17:36:08Z
 parent: beans-f11p
 ---
 
@@ -26,10 +26,10 @@ When an agent starts working on a project, understanding the current milestone c
 
 ## Checklist
 
-- [ ] Query for all milestones in the project
-- [ ] Identify in-progress milestones
-- [ ] Format milestone information in a clear, readable way for the prompt
-- [ ] Include milestone progress (completed/total children) if available
-- [ ] Add the milestone section to the prime output
-- [ ] Test with projects that have no milestones (graceful handling)
-- [ ] Test with projects that have multiple in-progress milestones
+- [x] Query for all milestones in the project
+- [x] Identify in-progress milestones
+- [x] Format milestone information in a clear, readable way for the prompt
+- [ ] Include milestone progress (completed/total children) if available (not requested)
+- [x] Add the milestone section to the prime output
+- [x] Test with projects that have no milestones (graceful handling)
+- [x] Test with projects that have multiple in-progress milestones
