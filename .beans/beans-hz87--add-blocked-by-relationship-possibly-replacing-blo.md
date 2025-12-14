@@ -3,8 +3,10 @@
 title: Add blocked-by relationship (possibly replacing blocking)
 status: todo
 type: feature
+priority: normal
 created_at: 2025-12-14T14:37:11Z
-updated_at: 2025-12-14T14:37:11Z
+updated_at: 2025-12-14T15:05:05Z
+parent: beans-f11p
 ---
 
 ## Summary

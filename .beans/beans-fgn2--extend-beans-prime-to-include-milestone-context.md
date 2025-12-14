@@ -3,8 +3,10 @@
 title: Extend beans prime to include milestone context
 status: todo
 type: feature
+priority: normal
 created_at: 2025-12-14T11:37:59Z
-updated_at: 2025-12-14T11:37:59Z
+updated_at: 2025-12-14T15:05:05Z
+parent: beans-f11p
 ---
 
 ## Summary
