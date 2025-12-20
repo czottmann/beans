@@ -1,8 +1,10 @@
 package beancore
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -172,6 +174,8 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 	defer watcher.Close()
 
 	var debounceTimer *time.Timer
+	var pendingMu sync.Mutex
+	pendingChanges := make(map[string]fsnotify.Op)
 
 	for {
 		select {
@@ -207,12 +211,23 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 				continue
 			}
 
+			// Accumulate changes during debounce window
+			pendingMu.Lock()
+			pendingChanges[event.Name] |= event.Op
+			pendingMu.Unlock()
+
 			// Start/reset debounce timer
 			if debounceTimer != nil {
 				debounceTimer.Stop()
 			}
 			debounceTimer = time.AfterFunc(debounceDelay, func() {
-				c.handleChange()
+				// Swap out pending changes atomically
+				pendingMu.Lock()
+				changes := pendingChanges
+				pendingChanges = make(map[string]fsnotify.Op)
+				pendingMu.Unlock()
+
+				c.handleChanges(changes)
 			})
 
 		case err, ok := <-watcher.Errors:
@@ -225,8 +240,12 @@ func (c *Core) watchLoop(watcher *fsnotify.Watcher) {
 	}
 }
 
-// handleChange reloads beans from disk, detects changes, and notifies subscribers.
-func (c *Core) handleChange() {
+// handleChanges processes only the files that changed, updating state incrementally.
+func (c *Core) handleChanges(changes map[string]fsnotify.Op) {
+	if len(changes) == 0 {
+		return
+	}
+
 	c.mu.Lock()
 
 	// Check if we're still watching
@@ -235,47 +254,69 @@ func (c *Core) handleChange() {
 		return
 	}
 
-	// Capture old state for comparison
-	oldBeans := make(map[string]*bean.Bean, len(c.beans))
-	for id, b := range c.beans {
-		oldBeans[id] = b
-	}
-
-	// Reload from disk
-	if err := c.loadFromDisk(); err != nil {
-		// On error, just continue - the beans map may be stale but that's better than crashing
-		c.mu.Unlock()
-		return
-	}
-
-	// Compute events by comparing states
 	var events []BeanEvent
 
-	// Check for created and updated beans
-	for id, newBean := range c.beans {
-		if _, existed := oldBeans[id]; !existed {
-			events = append(events, BeanEvent{
-				Type:   EventCreated,
-				Bean:   newBean,
-				BeanID: id,
-			})
-		} else {
-			events = append(events, BeanEvent{
-				Type:   EventUpdated,
-				Bean:   newBean,
-				BeanID: id,
-			})
-		}
-		delete(oldBeans, id)
-	}
+	for path, op := range changes {
+		filename := filepath.Base(path)
+		id, _ := bean.ParseFilename(filename)
 
-	// Remaining oldBeans entries were deleted
-	for id := range oldBeans {
-		events = append(events, BeanEvent{
-			Type:   EventDeleted,
-			Bean:   nil,
-			BeanID: id,
-		})
+		// Handle removes/renames (file is gone)
+		if op&fsnotify.Remove != 0 || op&fsnotify.Rename != 0 {
+			// Check if the file actually exists (rename might be followed by create)
+			if _, exists := c.beans[id]; exists {
+				// Only delete if it was in our map and file is actually gone
+				if !c.fileExists(path) {
+					delete(c.beans, id)
+
+					// Update search index
+					if c.searchIndex != nil {
+						if err := c.searchIndex.DeleteBean(id); err != nil {
+							c.logWarn("failed to remove bean %s from search index: %v", id, err)
+						}
+					}
+
+					events = append(events, BeanEvent{
+						Type:   EventDeleted,
+						Bean:   nil,
+						BeanID: id,
+					})
+				}
+			}
+			continue
+		}
+
+		// Handle creates/writes (file exists or was created)
+		if op&fsnotify.Create != 0 || op&fsnotify.Write != 0 {
+			newBean, err := c.loadBean(path)
+			if err != nil {
+				c.logWarn("failed to load bean from %s: %v", path, err)
+				continue
+			}
+
+			_, existed := c.beans[newBean.ID]
+			c.beans[newBean.ID] = newBean
+
+			// Update search index
+			if c.searchIndex != nil {
+				if err := c.searchIndex.IndexBean(newBean); err != nil {
+					c.logWarn("failed to index bean %s: %v", newBean.ID, err)
+				}
+			}
+
+			if existed {
+				events = append(events, BeanEvent{
+					Type:   EventUpdated,
+					Bean:   newBean,
+					BeanID: newBean.ID,
+				})
+			} else {
+				events = append(events, BeanEvent{
+					Type:   EventCreated,
+					Bean:   newBean,
+					BeanID: newBean.ID,
+				})
+			}
+		}
 	}
 
 	callback := c.onChange
@@ -288,4 +329,10 @@ func (c *Core) handleChange() {
 	if callback != nil {
 		callback()
 	}
+}
+
+// fileExists checks if a file exists at the given path.
+func (c *Core) fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
