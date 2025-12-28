@@ -19,7 +19,11 @@ BEFORE starting any task:
 - FINALLY: ONLY if the bean has no unchecked todo items left, mark it completed with `beans update <bean-id> -s completed`.
 - WHEN COMMITTING: Include both code changes AND bean file(s) in the commit
 
-If you identify follow-up work, create a new bean instead of doing it immediately.
+AFTER finishing any task:
+
+- When COMPLETING a bean, update it with a `## Summary of Changes` section describing what was done.
+- When SCRAPPING a bean, update it with a `## Reasons for Scrapping` section explaining why.
+- Offer to create follow-up beans for any non-urgent work that was deferred.
 
 ## Finding Work
 
